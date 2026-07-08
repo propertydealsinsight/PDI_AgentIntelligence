@@ -238,7 +238,7 @@ T_RAW_STATS AS (
             ph.changed_at,
             IF(t.first_published_date > t.listing_update_date, t.listing_update_date, t.first_published_date)
         ) AS days_diff,
-        ROUND(((ROUND(t.price - COALESCE(t.listed_price, t.price)) / t.price) * 100), 2) AS avg_difference_in_percentage,
+        ROUND(((ROUND(t.price - COALESCE(t.listed_price, t.price)) / COALESCE(t.listed_price, t.price)) * 100), 2) AS avg_difference_in_percentage,
         ROW_NUMBER() OVER (PARTITION BY t.listing_id ORDER BY ph.changed_at DESC) AS row_num_status
     FROM T_final_data t
     JOIN PDI_PortalsData.property_details_history ph ON (
@@ -258,7 +258,7 @@ T_RAW_STATS AS (
             ph.changed_at,
             IF(t.first_published_date > t.listing_update_date, t.listing_update_date, t.first_published_date)
         ) AS days_diff,
-        ROUND(((ROUND(t.price - COALESCE(t.listed_price, t.price)) / t.price) * 100), 2) AS avg_difference_in_percentage,
+        ROUND(((ROUND(t.price - COALESCE(t.listed_price, t.price)) / COALESCE(t.listed_price, t.price)) * 100), 2) AS avg_difference_in_percentage,
         ROW_NUMBER() OVER (PARTITION BY t.listing_id ORDER BY ph.changed_at DESC) AS row_num_status
     FROM T_final_data t
     JOIN PDI_PortalsData.property_details_zoopla_history ph ON (

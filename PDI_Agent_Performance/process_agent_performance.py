@@ -443,6 +443,16 @@ def main() -> int:
                     logger.exception("Failed processing agent id=%s", agent.id)
 
             if not job_report.interrupted:
+                # Read verification stats before atomic swap; after swap the staging
+                # table name no longer exists (it becomes the main table).
+                load_staging_verification(
+                    db,
+                    job_report,
+                    config.DATABASE,
+                    staging_table,
+                    args.dry_run,
+                )
+
                 if (
                     not args.dry_run
                     and staging_table is not None
@@ -493,14 +503,6 @@ def main() -> int:
                         qualified_table(config.DATABASE, staging_table),
                         qualified_table(config.DATABASE, main_table),
                     )
-
-                load_staging_verification(
-                    db,
-                    job_report,
-                    config.DATABASE,
-                    staging_table,
-                    args.dry_run,
-                )
 
                 exit_code = 1 if job_report.summary.failed else 0
     except KeyboardInterrupt:

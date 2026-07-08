@@ -105,6 +105,22 @@ PROD_TABLE        = "PDI_PortalsData.pdi_agent_performance"
 NEW_TABLE_DEFAULT = "PDI_PortalsData.pdi_agent_performance_07072026"
 TIME_CAP_MS       = 60_000
 
+# Override defaults from config.py if present
+try:
+    import sys as _sys, pathlib as _pl
+    _sys.path.insert(0, str(_pl.Path(__file__).parent.parent))
+    import config as _cfg
+    if getattr(_cfg, "VALIDATION_PROD_TABLE", ""):
+        PROD_TABLE = _cfg.VALIDATION_PROD_TABLE
+    _vnt = getattr(_cfg, "VALIDATION_NEW_TABLE", "")
+    if _vnt:
+        NEW_TABLE_DEFAULT = _vnt
+    elif getattr(_cfg, "MAIN_PERFORMANCE_TABLE", ""):
+        NEW_TABLE_DEFAULT = f"{_cfg.DATABASE}.{_cfg.MAIN_PERFORMANCE_TABLE}"
+    del _cfg, _vnt, _sys, _pl
+except ModuleNotFoundError:
+    pass
+
 PORTAL_SRC: dict[str, tuple[str, str]] = {
     "Rightmove": ("property_details",       "p.residential='YES' AND p.commercial='NO'"),
     "Zoopla":    ("property_details_zoopla", "p.category='residential'"),

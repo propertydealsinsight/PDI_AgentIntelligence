@@ -159,3 +159,4 @@ config.py
 # Validation HTML reports (generated locally, not for version control)
 validation/report_*.html
 validation/report.html
+validation_report_*.html

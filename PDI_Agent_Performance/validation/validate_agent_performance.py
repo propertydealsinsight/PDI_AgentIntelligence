@@ -39,25 +39,26 @@ Realised sold-vs-asking (avg_difference_in_percentage):
 
 USAGE
 -----
-    set PDI_RO_PASSWORD=********           (Windows)
-    export PDI_RO_PASSWORD=...             (bash)
-
     python validation/validate_agent_performance.py --sample 40
     python validation/validate_agent_performance.py --agent-id 132
-    python validation/validate_agent_performance.py --sample 20 --email --html-out report.html
+    python validation/validate_agent_performance.py --sample 20 --email
     python validation/validate_agent_performance.py --sample 50 --seed 99 --region SW
 
-Optional env overrides: PDI_RO_HOST, PDI_RO_PORT, PDI_RO_USER, PDI_RO_DB.
+HTML report is always written to validation/report_YYYYMMDD_HHMMSS_<table>.html automatically.
+
+Credentials are read from config.py (HOST/USER/PASSWORD/DATABASE) by default.
+Override any value with env vars: PDI_RO_HOST, PDI_RO_PORT, PDI_RO_USER, PDI_RO_PASSWORD, PDI_RO_DB.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import pathlib
 import statistics
 import sys
 from collections import Counter
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 # Force UTF-8 output on Windows so Unicode chars in output don't crash
@@ -117,11 +118,24 @@ ROW_BG     = {"GREEN": "#e8f5e9", "AMBER": "#fff3e0", "RED": "#ffebee", "SKIPPED
 # DB connection (read-only)
 # --------------------------------------------------------------------------- #
 def connect():
-    host     = os.environ.get("PDI_RO_HOST",     "insight.c1d82vlu7pgj.eu-west-2.rds.amazonaws.com")
+    try:
+        sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
+        import config as _cfg
+        _cfg_host = getattr(_cfg, "HOST", "insight.c1d82vlu7pgj.eu-west-2.rds.amazonaws.com")
+        _cfg_user = getattr(_cfg, "USER", "pdi_prospect_readonly")
+        _cfg_pass = getattr(_cfg, "PASSWORD", "")
+        _cfg_db   = getattr(_cfg, "DATABASE", "PDI_PortalsData")
+    except ModuleNotFoundError:
+        _cfg_host = "insight.c1d82vlu7pgj.eu-west-2.rds.amazonaws.com"
+        _cfg_user = "pdi_prospect_readonly"
+        _cfg_pass = ""
+        _cfg_db   = "PDI_PortalsData"
+
+    host     = os.environ.get("PDI_RO_HOST",     _cfg_host)
     port     = int(os.environ.get("PDI_RO_PORT", "3306"))
-    user     = os.environ.get("PDI_RO_USER",     "pdi_prospect_readonly")
-    password = os.environ.get("PDI_RO_PASSWORD", "")
-    db       = os.environ.get("PDI_RO_DB",       "PDI_PortalsData")
+    user     = os.environ.get("PDI_RO_USER",     _cfg_user)
+    password = os.environ.get("PDI_RO_PASSWORD", _cfg_pass)
+    db       = os.environ.get("PDI_RO_DB",       _cfg_db)
 
     if not password:
         sys.exit(
@@ -738,15 +752,16 @@ def send_email(html_body: str, tally: dict[str, int], cfg: Any) -> None:
         print("Email disabled (EnableMailNotification=False in config.py).")
         return
 
-    smtp_host = getattr(cfg, "MailHost",     "")
-    smtp_port = int(getattr(cfg, "MailPort", 587))
-    smtp_user = getattr(cfg, "MailUser",     "")
-    smtp_pass = getattr(cfg, "MailPassword", "")
-    to_list   = getattr(cfg, "MailTO",       [])
-    from_addr = getattr(cfg, "MailFrom",     smtp_user)
+    smtp_host = getattr(cfg, "MAIL_HOST", "")
+    smtp_port = int(getattr(cfg, "MAIL_PORT", 587))
+    smtp_user = getattr(cfg, "MAIL_USER", "")
+    smtp_pass = getattr(cfg, "MAIL_PASS", "")
+    smtp_ssl  = getattr(cfg, "MAIL_SSL",  False)
+    to_list   = getattr(cfg, "MailTO",    [])
+    from_addr = getattr(cfg, "MAIL_FROM", smtp_user)
 
     if not smtp_host or not to_list:
-        print("Email skipped: MailHost or MailTO not configured in config.py.")
+        print("Email skipped: MAIL_HOST or MailTO not configured in config.py.")
         return
 
     to_addrs = to_list if isinstance(to_list, list) else [to_list]
@@ -763,13 +778,18 @@ def send_email(html_body: str, tally: dict[str, int], cfg: Any) -> None:
     msg["To"]      = ", ".join(to_addrs)
     msg.attach(MIMEText(html_body, "html"))
 
-    with smtplib.SMTP(smtp_host, smtp_port) as s:
-        s.ehlo()
-        if smtp_port in (587, 465):
+    if smtp_ssl:
+        with smtplib.SMTP_SSL(smtp_host, smtp_port) as s:
+            if smtp_user and smtp_pass:
+                s.login(smtp_user, smtp_pass)
+            s.sendmail(from_addr, to_addrs, msg.as_string())
+    else:
+        with smtplib.SMTP(smtp_host, smtp_port) as s:
+            s.ehlo()
             s.starttls()
-        if smtp_user and smtp_pass:
-            s.login(smtp_user, smtp_pass)
-        s.sendmail(from_addr, to_addrs, msg.as_string())
+            if smtp_user and smtp_pass:
+                s.login(smtp_user, smtp_pass)
+            s.sendmail(from_addr, to_addrs, msg.as_string())
     print(f"Email sent → {msg['To']}  |  subject: {subject}")
 
 
@@ -794,8 +814,6 @@ def main() -> int:
                     help="skip whole-table health summary (faster when re-running)")
     ap.add_argument("--email",          action="store_true",
                     help="send HTML report via config.py SMTP settings")
-    ap.add_argument("--html-out",
-                    help="write HTML report to this file path")
     args = ap.parse_args()
 
     today = str(date.today())
@@ -867,21 +885,25 @@ def main() -> int:
             f"RED={tally['RED']}  SKIPPED={tally['SKIPPED']}"
         )
 
-        if args.html_out or args.email:
-            html = build_html(
-                a_lines, b_results, tally,
-                args.sample, args.seed, args.new_table, today,
-            )
-            if args.html_out:
-                with open(args.html_out, "w", encoding="utf-8") as f:
-                    f.write(html)
-                print(f"HTML report → {args.html_out}")
-            if args.email:
-                try:
-                    import config as cfg
-                    send_email(html, tally, cfg)
-                except ImportError:
-                    print("WARNING: config.py not found; skipping email.")
+        _ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+        _tbl_slug = (args.new_table or "").split(".")[-1][:60]
+        _fname    = f"report_{_ts}_{_tbl_slug}.html" if _tbl_slug else f"report_{_ts}.html"
+        html_path = pathlib.Path(__file__).parent / _fname
+
+        html = build_html(
+            a_lines, b_results, tally,
+            args.sample, args.seed, args.new_table, today,
+        )
+        with open(html_path, "w", encoding="utf-8") as f:
+            f.write(html)
+        print(f"HTML report → {html_path}")
+
+        if args.email:
+            try:
+                import config as cfg
+                send_email(html, tally, cfg)
+            except ImportError:
+                print("WARNING: config.py not found; skipping email.")
 
     finally:
         cur.close()

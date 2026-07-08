@@ -155,3 +155,7 @@ cython_debug/
 # Config File
 config.py
 *.pem
+
+# Validation HTML reports (generated locally, not for version control)
+validation/report_*.html
+validation/report.html

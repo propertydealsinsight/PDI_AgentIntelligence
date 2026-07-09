@@ -163,6 +163,7 @@ def upsert_agent_performance(
             "no_of_sold_mature": stats.get("no_of_sold_mature"),
             "no_of_sold_with_soldprice": stats.get("no_of_sold_with_soldprice"),
             "no_of_price_recovered": stats.get("no_of_price_recovered"),
+            "no_of_excluded_outliers": stats.get("no_of_excluded_outliers"),
             "avg_difference_in_percentage": stats.get("avg_difference_in_percentage"),
             "turnaround_days": stats.get("turnaround_days"),
         },
@@ -219,8 +220,8 @@ def process_agent(
 
     logger.info(
         "Completed agent id=%s | listings=%s | live=%s | sold=%s | withdrawn=%s | "
-        "sold_mature=%s | sold_with_price=%s | recovered=%s | median_diff_pct=%s | turnaround_days=%s | "
-        "query_time=%.2fs | total_time=%.2fs",
+        "sold_mature=%s | sold_with_price=%s | recovered=%s | excluded_outliers=%s | "
+        "median_diff_pct=%s | turnaround_days=%s | query_time=%.2fs | total_time=%.2fs",
         agent.id,
         stats.get("no_of_listings"),
         stats.get("no_of_live_listings"),
@@ -229,6 +230,7 @@ def process_agent(
         stats.get("no_of_sold_mature"),
         stats.get("no_of_sold_with_soldprice"),
         stats.get("no_of_price_recovered"),
+        stats.get("no_of_excluded_outliers"),
         stats.get("avg_difference_in_percentage"),
         stats.get("turnaround_days"),
         elapsed_query,

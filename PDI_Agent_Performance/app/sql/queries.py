@@ -22,17 +22,24 @@ ONE TABLE, TWO CLOCKS:
         sold_price = COALESCE(pdi_ppd_last_transaction_soldPrice, last_transaction_soldPrice)
         variation% = (sold_price - asking) / asking * 100
     counted only when txn_date >= first_published_date (this listing's sale, not
-    an unrelated historical one). Anomalies are excluded from the median but the
-    listing is still counted. Coverage is published:
+    an unrelated historical one). Statistical anomalies are excluded from the
+    median via a robust MAD fence (median ± MAD_K * 1.4826 * MAD, applied only
+    when there are >= MIN_POINTS_FOR_OUTLIER_FENCE valid points and MAD > 0) --
+    the listing is still counted in no_of_sold_with_soldprice, only the value is
+    dropped from the median. This mirrors validation/validate_agent_performance.py's
+    recompute() so the two can be cross-checked. Coverage is published:
         no_of_sold_mature         -- sold listings in the mature window (denominator)
-        no_of_sold_with_soldprice -- of those, how many had a usable PPD price (median basis)
+        no_of_sold_with_soldprice -- of those, how many had a usable PPD price (pre-exclusion)
         no_of_price_recovered     -- of those, how many had asking recovered from a placeholder
+        no_of_excluded_outliers   -- of those, how many were dropped from the median by the MAD fence
 """
 
 # tunables -----------------------------------------------------------------
 COUNT_LOOKBACK_DAYS = 365        # recent window for activity counts
 PRICE_LOOKBACK_MONTHS = 24       # mature window for the realised-price metric
 PLACEHOLDER_PRICE = 1000         # a sale asking <= this is treated as hidden/placeholder
+MAD_K = 3.5                      # robust outlier fence multiplier: median +/- MAD_K * 1.4826 * MAD
+MIN_POINTS_FOR_OUTLIER_FENCE = 5 # below this many valid points, skip MAD fencing (too few to be robust)
 
 _SOLD_SET = (
     "'Sold STC', 'Under offer', 'Reserved', 'Sold STCM', "
@@ -167,11 +174,51 @@ T_valid AS (
       AND txn_date IS NOT NULL
       AND txn_date >= first_published_date          -- registered sale, after go-live
 ),
-T_ranked AS (
+-- ==== robust MAD outlier fence around the RAW median (§4 of the gaps doc) ====
+T_med_raw AS (
     SELECT variation_pct,
            ROW_NUMBER() OVER (ORDER BY variation_pct) AS rn,
            COUNT(*)     OVER ()                       AS cnt
     FROM T_valid
+),
+T_med_raw_val AS (
+    SELECT AVG(variation_pct) AS med, MAX(cnt) AS n_valid
+    FROM T_med_raw
+    WHERE rn IN (FLOOR((cnt + 1) / 2), CEIL((cnt + 1) / 2))
+),
+T_mad AS (
+    SELECT ABS(v.variation_pct - r.med)                                   AS abs_dev,
+           ROW_NUMBER() OVER (ORDER BY ABS(v.variation_pct - r.med))      AS rn,
+           COUNT(*)     OVER ()                                           AS cnt
+    FROM T_valid v CROSS JOIN T_med_raw_val r
+),
+T_mad_val AS (
+    SELECT AVG(abs_dev) AS mad
+    FROM T_mad
+    WHERE rn IN (FLOOR((cnt + 1) / 2), CEIL((cnt + 1) / 2))
+),
+T_fence AS (
+    -- fence only applies with enough points and a non-degenerate MAD; otherwise keep everything
+    SELECT
+        r.n_valid,
+        CASE WHEN r.n_valid >= {MIN_POINTS_FOR_OUTLIER_FENCE} AND m.mad > 0
+             THEN r.med - {MAD_K} * 1.4826 * m.mad END AS lo,
+        CASE WHEN r.n_valid >= {MIN_POINTS_FOR_OUTLIER_FENCE} AND m.mad > 0
+             THEN r.med + {MAD_K} * 1.4826 * m.mad END AS hi
+    FROM T_med_raw_val r CROSS JOIN T_mad_val m
+),
+T_kept AS (
+    -- valid points surviving the fence; this is what the median/mean is computed over.
+    -- Excluded points are still counted in no_of_sold_with_soldprice, just not here.
+    SELECT v.listing_id, v.variation_pct
+    FROM T_valid v CROSS JOIN T_fence f
+    WHERE f.lo IS NULL OR v.variation_pct BETWEEN f.lo AND f.hi
+),
+T_ranked AS (
+    SELECT variation_pct,
+           ROW_NUMBER() OVER (ORDER BY variation_pct) AS rn,
+           COUNT(*)     OVER ()                       AS cnt
+    FROM T_kept
 ),
 T_turnaround AS (
     SELECT days_diff FROM (
@@ -205,7 +252,9 @@ SELECT
     (SELECT COUNT(*) FROM T_all_final WHERE marked_under_offer_sold = 1) AS no_of_sold_mature,
     (SELECT COUNT(*) FROM T_valid)                                       AS no_of_sold_with_soldprice,
     (SELECT COALESCE(SUM(asking_recovered), 0) FROM T_valid)            AS no_of_price_recovered,
-    -- ROBUST headline: MEDIAN of valid sold-vs-ORIGINAL-asking variations
+    -- points removed from the median by the MAD fence (still counted above, just excluded here)
+    ((SELECT COUNT(*) FROM T_valid) - (SELECT COUNT(*) FROM T_kept))    AS no_of_excluded_outliers,
+    -- ROBUST headline: MEDIAN of valid, non-outlier sold-vs-ORIGINAL-asking variations
     (
         SELECT ROUND(AVG(variation_pct), 2)
         FROM T_ranked
@@ -228,6 +277,7 @@ INSERT INTO {performance_table} (
     no_of_sold_mature,
     no_of_sold_with_soldprice,
     no_of_price_recovered,
+    no_of_excluded_outliers,
     avg_difference_in_percentage,
     turnaround_days,
     update_dt
@@ -243,6 +293,7 @@ INSERT INTO {performance_table} (
     %(no_of_sold_mature)s,
     %(no_of_sold_with_soldprice)s,
     %(no_of_price_recovered)s,
+    %(no_of_excluded_outliers)s,
     %(avg_difference_in_percentage)s,
     %(turnaround_days)s,
     NOW()
@@ -258,6 +309,7 @@ ON DUPLICATE KEY UPDATE
     no_of_sold_mature = VALUES(no_of_sold_mature),
     no_of_sold_with_soldprice = VALUES(no_of_sold_with_soldprice),
     no_of_price_recovered = VALUES(no_of_price_recovered),
+    no_of_excluded_outliers = VALUES(no_of_excluded_outliers),
     avg_difference_in_percentage = VALUES(avg_difference_in_percentage),
     turnaround_days = VALUES(turnaround_days),
     update_dt = NOW()

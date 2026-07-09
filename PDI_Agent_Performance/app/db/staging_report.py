@@ -24,6 +24,7 @@ def fetch_staging_verification(
             SUM(no_of_live_listings) AS total_live,
             SUM(no_of_sold_listings) AS total_sold,
             SUM(no_of_withdrawn_listing) AS total_withdrawn,
+            SUM(no_of_excluded_outliers) AS total_excluded_outliers,
             ROUND(AVG(avg_difference_in_percentage), 2) AS avg_price_diff,
             ROUND(AVG(turnaround_days)) AS avg_turnaround
         FROM {table}

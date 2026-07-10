@@ -130,10 +130,16 @@ def _listing_select(portal: str, table: str, name_col: str, addr_col: str, resid
       AND {residential_pred}"""
 
 
+# name/address MUST match the consumer join key used by
+# PropertyDataDBAPIs/routers/Agent/agentPerformance.py, which joins the
+# performance table on COALESCE(agent_name_zl, agent_name_rm) +
+# COALESCE(address_zl, address_rm). Do NOT prefer agent_master_name here:
+# it differs from the zl/rm names for ~16k master rows and silently drops
+# those agents from the customer-facing ranking.
 FETCH_AGENTS_QUERY = """
 SELECT
     p.id,
-    COALESCE(p.agent_master_name, p.agent_name_zl, p.agent_name_rm) AS agent_name,
+    COALESCE(p.agent_name_zl, p.agent_name_rm) AS agent_name,
     COALESCE(p.address_zl, p.address_rm) AS agent_address,
     p.agent_logo
 FROM PDI_PortalsData.pdi_agent_master p

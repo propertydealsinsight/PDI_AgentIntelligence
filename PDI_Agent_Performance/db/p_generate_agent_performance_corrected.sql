@@ -1,4 +1,17 @@
 -- ============================================================================
+-- !! PARKED — DO NOT DEPLOY OR CALL (status 2026-07-10) !!
+-- The Python pipeline went live as the production source of truth on
+-- 2026-07-10; this SQL-procedure alternative was parked before completion.
+-- Known defects that MUST be fixed before it is ever trusted:
+--   1. Reports MEAN, not MEDIAN (decided headline is median).
+--   2. No MAD outlier fence (Python has it — see app/sql/queries.py T_fence).
+--   3. Resumes from pdi_procedure_logs using the SAME control key
+--      ('p_generate_agent_performance') as the old procedure — a manual CALL
+--      races the old event on that row and on the live table (the "locking"
+--      issue of 2026-07-09). Rename the control key first.
+--   4. Naming predates decision D4 (ZL-first join key) — verify before use.
+-- See docs/agent_performance_design_and_decisions.md (TODO T4).
+-- ============================================================================
 -- p_generate_agent_performance  —  CORRECTED metric version (two-window)
 -- ----------------------------------------------------------------------------
 -- Kept deliberately in sync with the Python pipeline (app/sql/queries.py) so the

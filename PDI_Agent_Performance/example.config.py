@@ -1,0 +1,39 @@
+# Copy this file to config.py and fill in real values. config.py is gitignored.
+
+# PDI database
+HOST = "your-mysql-host"
+USER = "your-user"
+PASSWORD = "your-password"
+DATABASE = "PDI_PortalsData"
+PORT = 3306
+POOL_SIZE = 5
+
+# Target table for reads/schema copy. Writes go to a timestamped staging table.
+# NOTE: staging is CREATE TABLE ... LIKE this table, so it must carry BOTH unique
+# keys (agent_master_id AND agent_name+agent_address) — the name/addr one is what
+# resolves master-row collisions under the COALESCE(zl, rm) naming. In production
+# this must be "pdi_agent_performance". See docs/agent_performance_design_and_decisions.md.
+MAIN_PERFORMANCE_TABLE = "pdi_agent_performance"
+
+# When True, atomically swap staging table into main on a successful full run:
+#   pdi_agent_performance      -> pdi_agent_performance_bkp   (previous bkp is DROPPED)
+#   pdi_agent_performance_<ts> -> pdi_agent_performance
+ATOMIC_REPLACE_MAIN_TABLE = False
+
+# Validation harness table targets (independent of the creation job).
+# Leave empty to fall back to MAIN_PERFORMANCE_TABLE for the python-pipeline side.
+VALIDATION_PROD_TABLE = "PDI_PortalsData.pdi_agent_performance"
+VALIDATION_NEW_TABLE = ""
+
+# Email notification sent after every run when enabled
+EnableMailNotification = False
+
+# Mail config
+MailTO = ["you@example.com"]
+MAIL_FROM = "batchjobs@example.com"
+MAIL_HOST = "smtp.example.com"
+MAIL_PORT = 465
+MAIL_USER = "batchjobs@example.com"
+MAIL_PASS = "your-smtp-password"
+MAIL_SSL = True
+MAIL_TLS = True

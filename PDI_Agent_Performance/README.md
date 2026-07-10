@@ -2,6 +2,10 @@
 
 Python job that reads agents from `pdi_agent_master`, computes listing performance metrics for each agent, and inserts or updates rows in `pdi_agent_performance`.
 
+**This pipeline is the production source of truth** (live since 2026-07-10; the old MySQL event/procedure is decommissioned — its output is parked at `pdi_agent_performance_legacy_DND`).
+
+> **Read [`docs/agent_performance_design_and_decisions.md`](docs/agent_performance_design_and_decisions.md) before changing metric logic, naming, or schema.** It records the architectural decisions (two-window metric, MAD outlier fence, the ZL-first naming that the customer-facing API joins on, dual unique keys), the open gotchas, and the TODO list.
+
 Agents are processed **one by one**. Each record is logged with timing and result details.
 
 ## Requirements
@@ -129,8 +133,8 @@ python process_agent_performance.py --start-id 100 --end-id 500 --limit 50 --log
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `MAIN_PERFORMANCE_TABLE` | `pdi_agent_performance` | Main table name. Used as the template for staging tables and as the swap target. |
-| `ATOMIC_REPLACE_MAIN_TABLE` | `False` | When `True`, atomically swap the staging table into the main table after a successful **full run** (no agent filters). |
+| `MAIN_PERFORMANCE_TABLE` | `pdi_agent_performance` | Main table name. Used as the template for staging tables and as the swap target. **Must stay `pdi_agent_performance` in production** — staging copies its schema, including the two unique keys that prevent duplicate rows (gotcha G10 in the design doc). |
+| `ATOMIC_REPLACE_MAIN_TABLE` | `False` | When `True`, atomically swap the staging table into the main table after a successful **full run** (no agent filters). **Production runs with `True`** since 2026-07-10. |
 
 ### Email notifications
 
@@ -195,30 +199,46 @@ For each agent in `pdi_agent_master`:
 ```sql
 SELECT
     p.id,
-    COALESCE(p.agent_master_name, p.agent_name_zl, p.agent_name_rm) AS agent_name,
+    COALESCE(p.agent_name_zl, p.agent_name_rm) AS agent_name,
     COALESCE(p.address_zl, p.address_rm) AS agent_address,
     p.agent_logo
 FROM PDI_PortalsData.pdi_agent_master p
 ```
 
-2. Runs the performance calculation query using Rightmove and Zoopla listing data from the last 365 days.
+   The ZL-first name/address is deliberate: it is the exact join key the
+   customer-facing API uses. Do **not** switch to `agent_master_name` — see
+   decision D4 in `docs/agent_performance_design_and_decisions.md`.
 
-3. Upserts the result into the timestamped staging table using `agent_master_id` as the unique key.
+2. Runs the two-window performance query (`AGENT_STATS_QUERY`): activity counts
+   and turnaround on the last **365 days**; the sold-vs-original-asking median
+   on the last **24 months** (Land Registry matched, MAD outlier fence).
+
+3. Upserts the result into the timestamped staging table. The table has **two**
+   unique keys — `agent_master_id` and `(agent_name, agent_address)` — so master
+   rows that collapse onto the same name/address resolve last-writer-wins
+   instead of creating duplicate rows (decision D5).
 
 Updated fields on conflict:
 
-- `agent_name`
-- `agent_address`
-- `agent_logo`
-- `no_of_listings`
-- `no_of_live_listings`
-- `no_of_sold_listings`
-- `no_of_withdrawn_listing`
-- `avg_difference_in_percentage`
-- `turnaround_days`
+- `agent_name`, `agent_address`, `agent_logo`
+- `no_of_listings`, `no_of_live_listings`, `no_of_sold_listings`, `no_of_withdrawn_listing`
+- `no_of_sold_mature`, `no_of_sold_with_soldprice` (coverage), `no_of_price_recovered`, `no_of_excluded_outliers`
+- `avg_difference_in_percentage` (median), `turnaround_days`
 - `update_dt`
 
 Agents missing both name and address are skipped. Agents with `no_of_listings = 0` are computed but not inserted into the staging table.
+
+## Validation
+
+After any change to metric logic, run the read-only harness against the staging
+table before letting it swap into production:
+
+```powershell
+python validation/validate_agent_performance.py --sample 100 --seed 42 --new-table PDI_PortalsData.<staging_table>
+```
+
+Exit code 0/1/2 = GREEN/AMBER/RED; an HTML report is written to `validation/`.
+See section 4 of the design doc for what the harness does and does not prove.
 
 ## Logging
 

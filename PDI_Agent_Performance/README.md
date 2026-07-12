@@ -190,6 +190,17 @@ Atomic swap is **skipped** when:
 - Partial filters were used (`--agent-id`, `--start-id`, `--end-id`, `--limit`, `--offset`)
 - The run was a `--dry-run`
 
+and **blocked (fail-closed)** when either pre-swap check fails — the live table
+is never touched in that case and the staging table is kept for inspection:
+
+1. Structural gate: unique indexes, row count ≥ 90% of live, no duplicate
+   name/address keys, clamping/NULL limits, count invariants.
+2. Pre-swap validation: the RAG harness runs against the staging table (live as
+   drift baseline, rotating random sample); more than
+   `PRESWAP_VALIDATION_MAX_RED` RED agents blocks the swap.
+   Tune with `PRESWAP_VALIDATION_SAMPLE` / `PRESWAP_VALIDATION_MAX_RED`
+   (defaults 40 / 4; sample `0` disables the validation step).
+
 ## What the Script Does
 
 For each agent in `pdi_agent_master`:
@@ -230,15 +241,35 @@ Agents missing both name and address are skipped. Agents with `no_of_listings = 
 
 ## Validation
 
-After any change to metric logic, run the read-only harness against the staging
-table before letting it swap into production:
+The read-only harness needs no table names — it validates the live table and
+compares it against the previous run's `_bkp` table (both maintained
+automatically by the atomic swap). The random sample rotates daily unless a
+seed is fixed:
 
 ```powershell
-python validation/validate_agent_performance.py --sample 100 --seed 42 --new-table PDI_PortalsData.<staging_table>
+python validation/validate_agent_performance.py --sample 100 --email    # normal weekly run
+python validation/validate_agent_performance.py --agent-id 6209         # one agent, deep-dive
+python validation/validate_agent_performance.py --table PDI_PortalsData.<any_table>  # ad-hoc
 ```
 
 Exit code 0/1/2 = GREEN/AMBER/RED; an HTML report is written to `validation/`.
 See section 4 of the design doc for what the harness does and does not prove.
+
+The job itself also refuses to swap a bad staging table into production: a
+**pre-swap gate** (`run_preswap_gate` in `app/db/staging_report.py`) checks
+unique indexes, row-count ratio vs live, duplicate name/address keys, clamping,
+NULL-share, and count invariants — any failure (or error) blocks the swap,
+retains the staging table, and exits non-zero.
+
+For truth calibration (how far the metrics are from reality, not just from the
+definitions), run the separate read-only calibration harness:
+
+```powershell
+python validation/calibrate_agent_performance.py            # C1-C4, default outcodes
+python validation/calibrate_agent_performance.py --checks c1,c2 --outcodes B1,SW11
+```
+
+First-run findings and interpretation live in gotcha G7 of the design doc.
 
 ## Logging
 

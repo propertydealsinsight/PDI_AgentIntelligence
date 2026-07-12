@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
+import subprocess
 import sys
 import time
 import traceback
@@ -21,7 +23,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from app.db.database import Database
-from app.db.staging_report import fetch_staging_verification
+from app.db.staging_report import fetch_staging_verification, run_preswap_gate
 from app.models.report import (
     FailedRecord,
     JobReport,
@@ -322,6 +324,55 @@ def load_staging_verification(
         )
 
 
+def run_preswap_validation(
+    database: str,
+    staging_table: str,
+    main_table: str,
+    sample: int,
+    max_red: int,
+) -> tuple[bool, str]:
+    """Run the RAG validation harness against the STAGING table (drift baseline
+    = current live table) BEFORE the swap, so a bad refresh never goes live.
+
+    The job knows the staging name it just created, so no table discovery is
+    needed. Blocks the swap (fail closed) if the harness crashes, produces no
+    tally, or reports more than `max_red` RED agents in the sample.
+    """
+    harness = Path(__file__).parent / "validation" / "validate_agent_performance.py"
+    cmd = [
+        sys.executable, str(harness),
+        "--table", f"{database}.{staging_table}",
+        "--baseline-table", f"{database}.{main_table}",
+        "--sample", str(sample),
+    ]
+    try:
+        res = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=7200, encoding="utf-8"
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"pre-swap validation timed out after 2h (sample={sample})"
+    except Exception as exc:
+        return False, f"pre-swap validation could not run: {type(exc).__name__}: {exc}"
+
+    m = re.search(
+        r"GREEN=(\d+)\s+AMBER=(\d+)\s+RED=(\d+)\s+SKIPPED=(\d+)", res.stdout or ""
+    )
+    if not m:
+        tail = (res.stdout or res.stderr or "")[-500:]
+        return False, (
+            f"pre-swap validation produced no tally (exit {res.returncode}) — "
+            f"fail closed. Output tail: {tail!r}"
+        )
+    green, amber, red, skipped = map(int, m.groups())
+    summary = (
+        f"GREEN={green} AMBER={amber} RED={red} SKIPPED={skipped} "
+        f"(sample={sample}, max_red={max_red})"
+    )
+    if red > max_red:
+        return False, f"validation RED count exceeds threshold: {summary}"
+    return True, summary
+
+
 def main() -> int:
     args = parse_args()
     log_file = None if args.no_log_file else args.log_file
@@ -356,6 +407,7 @@ def main() -> int:
     staging_table: str | None = None
     upsert_query: str | None = None
     exit_code = 0
+    gate_blocked = False
 
     try:
         logger.info("Starting agent performance job")
@@ -469,16 +521,63 @@ def main() -> int:
                     and atomic_replace
                 ):
                     if is_full_run(args):
-                        atomic_replace_main_table(
-                            db,
-                            config.DATABASE,
-                            main_table,
-                            staging_table,
+                        gate_ok, gate_failures = run_preswap_gate(
+                            db, config.DATABASE, staging_table, main_table
                         )
-                        job_report.atomic_swap_performed = True
-                        job_report.atomic_swap_message = (
-                            f"Atomic swap completed: {staging_table} promoted to {main_table}."
-                        )
+                        if not gate_ok:
+                            job_report.atomic_swap_message = (
+                                "Atomic swap BLOCKED by pre-swap gate: "
+                                + "; ".join(gate_failures)
+                                + f". Staging table {staging_table} retained for inspection."
+                            )
+                            logger.error(
+                                "Pre-swap gate FAILED — swap blocked, staging %s retained: %s",
+                                qualified_table(config.DATABASE, staging_table),
+                                "; ".join(gate_failures),
+                            )
+                            gate_blocked = True
+                        else:
+                            logger.info("Pre-swap gate passed — running pre-swap validation")
+                            val_sample = getattr(config, "PRESWAP_VALIDATION_SAMPLE", 40)
+                            val_max_red = getattr(config, "PRESWAP_VALIDATION_MAX_RED", 4)
+                            if val_sample > 0:
+                                val_ok, val_msg = run_preswap_validation(
+                                    config.DATABASE,
+                                    staging_table,
+                                    main_table,
+                                    val_sample,
+                                    val_max_red,
+                                )
+                            else:
+                                val_ok, val_msg = True, "pre-swap validation disabled in config"
+                            if not val_ok:
+                                job_report.atomic_swap_message = (
+                                    f"Atomic swap BLOCKED by pre-swap validation: {val_msg}. "
+                                    f"Live table untouched; staging table {staging_table} "
+                                    f"retained for inspection."
+                                )
+                                logger.error(
+                                    "Pre-swap validation FAILED — swap blocked, staging %s retained: %s",
+                                    qualified_table(config.DATABASE, staging_table),
+                                    val_msg,
+                                )
+                                gate_blocked = True
+                            else:
+                                logger.info(
+                                    "Pre-swap validation passed (%s) — proceeding with atomic swap",
+                                    val_msg,
+                                )
+                                atomic_replace_main_table(
+                                    db,
+                                    config.DATABASE,
+                                    main_table,
+                                    staging_table,
+                                )
+                                job_report.atomic_swap_performed = True
+                                job_report.atomic_swap_message = (
+                                    f"Atomic swap completed: {staging_table} promoted to "
+                                    f"{main_table}. Gate passed; validation: {val_msg}."
+                                )
                     else:
                         job_report.atomic_swap_message = (
                             "Atomic swap skipped: partial filters were used."
@@ -513,7 +612,7 @@ def main() -> int:
                         qualified_table(config.DATABASE, main_table),
                     )
 
-                exit_code = 1 if job_report.summary.failed else 0
+                exit_code = 1 if (job_report.summary.failed or gate_blocked) else 0
     except KeyboardInterrupt:
         job_report.interrupted = True
         job_report.interrupt_message = (

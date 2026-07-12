@@ -3,15 +3,16 @@ Read-only validation harness for the agent-performance tables (RAG mailshot).
 
 WHY THIS EXISTS
 ---------------
-Two pipelines populate agent-performance tables with IDENTICAL column names but
-DIFFERENT metric definitions:
+Ongoing quality watch on the LIVE pdi_agent_performance table (populated weekly
+by process_agent_performance.py, which has its own pre-swap gate for structural
+checks). This harness does the deeper, sampled work:
 
-  pdi_agent_performance              <- MySQL procedure p_generate_agent_performance
-  pdi_agent_performance_<ddmmyyyy>   <- Python project (process_agent_performance.py)
+  Section A: whole-table health + week-over-week drift vs the _bkp table that
+             the atomic swap maintains (no table names needed).
+  Section B: independent recompute of a rotating random sample of agents from
+             the raw listing tables, RAG-scored against the stored values.
 
-This harness independently recomputes the same metrics from raw listing tables
-so you can see, per agent, how far each table is from a defensible answer.
-It exits with code 0=GREEN, 1=AMBER, 2=RED so it integrates cleanly with CI.
+It exits with code 0=GREEN, 1=AMBER, 2=RED so it integrates cleanly with cron.
 
 METRIC DEFINITION (two-window / two-clock)
 ------------------------------------------
@@ -101,23 +102,25 @@ SOLD_STATUSES      = {
 LIVE_STATUSES      = {"for_sale", "to_rent"}
 WITHDRAWN_STATUSES = {"removed", "archived", "EXPIRED"}
 
-PROD_TABLE        = "PDI_PortalsData.pdi_agent_performance"
-NEW_TABLE_DEFAULT = "PDI_PortalsData.pdi_agent_performance_07072026"
-TIME_CAP_MS       = 60_000
+# TARGET  = the table being validated. Defaults to the LIVE production table,
+#           so scheduled runs never need a table name.
+# BASELINE = comparison table for week-over-week drift. Defaults to the _bkp
+#           table that the pipeline's atomic swap maintains automatically
+#           (last successful run). If it doesn't exist, drift is skipped.
+TARGET_TABLE_DEFAULT   = "PDI_PortalsData.pdi_agent_performance"
+BASELINE_TABLE_DEFAULT = "PDI_PortalsData.pdi_agent_performance_bkp"
+TIME_CAP_MS            = 60_000
 
-# Override defaults from config.py if present
+# Optional overrides from config.py (leave unset/empty for the defaults above)
 try:
     import sys as _sys, pathlib as _pl
     _sys.path.insert(0, str(_pl.Path(__file__).parent.parent))
     import config as _cfg
-    if getattr(_cfg, "VALIDATION_PROD_TABLE", ""):
-        PROD_TABLE = _cfg.VALIDATION_PROD_TABLE
-    _vnt = getattr(_cfg, "VALIDATION_NEW_TABLE", "")
-    if _vnt:
-        NEW_TABLE_DEFAULT = _vnt
-    elif getattr(_cfg, "MAIN_PERFORMANCE_TABLE", ""):
-        NEW_TABLE_DEFAULT = f"{_cfg.DATABASE}.{_cfg.MAIN_PERFORMANCE_TABLE}"
-    del _cfg, _vnt, _sys, _pl
+    if getattr(_cfg, "VALIDATION_TARGET_TABLE", ""):
+        TARGET_TABLE_DEFAULT = _cfg.VALIDATION_TARGET_TABLE
+    if getattr(_cfg, "VALIDATION_BASELINE_TABLE", ""):
+        BASELINE_TABLE_DEFAULT = _cfg.VALIDATION_BASELINE_TABLE
+    del _cfg, _sys, _pl
 except ModuleNotFoundError:
     pass
 
@@ -505,15 +508,19 @@ def stored_stats(cur, table: str, name: str, addr: str) -> dict | None:
 # --------------------------------------------------------------------------- #
 # Section A — whole-table health
 # --------------------------------------------------------------------------- #
-def section_a(cur, new_table: str) -> list[str]:
+def section_a(cur, target_table: str, baseline_table: str) -> list[str]:
     lines: list[str] = []
-    lines.append("SECTION A — table health & cross-table divergence")
+    lines.append("SECTION A — table health & week-over-week drift")
     lines.append("=" * 60)
 
-    for label, t, has_extra in (
-        ("PROD (procedure)", PROD_TABLE, False),
-        ("NEW  (python)",    new_table,  True),
-    ):
+    baseline_ok = table_accessible(cur, baseline_table)
+    tables = [("TARGET  (validating)", target_table, True)]
+    if baseline_ok:
+        tables.append(("BASELINE (previous run)", baseline_table, True))
+    else:
+        lines.append(f"\n[baseline {baseline_table} not accessible — drift comparison skipped]")
+
+    for label, t, has_extra in tables:
         cur.execute(cap(f"""
             SELECT COUNT(*) n_rows,
                    MIN(avg_difference_in_percentage) mn,
@@ -568,28 +575,30 @@ def section_a(cur, new_table: str) -> list[str]:
                 else:
                     raise
 
-    cur.execute(cap(f"""
-        SELECT COUNT(*) matched,
-               SUM(p.no_of_sold_listings <> n.no_of_sold_listings) sold_differs,
-               ROUND(AVG(ABS(CAST(p.no_of_sold_listings AS SIGNED)
-                             - CAST(n.no_of_sold_listings AS SIGNED))), 1) avg_abs_sold_gap,
-               ROUND(AVG(ABS(COALESCE(p.turnaround_days,0)
-                             - COALESCE(n.turnaround_days,0))), 1) avg_abs_ta_gap,
-               ROUND(AVG(ABS(COALESCE(p.avg_difference_in_percentage,0)
-                             - COALESCE(n.avg_difference_in_percentage,0))), 2) avg_abs_diff_gap
-        FROM {PROD_TABLE} p
-        JOIN {new_table} n
-          ON p.agent_name=n.agent_name AND p.agent_address=n.agent_address
-    """))
-    r = cur.fetchone()
-    pct = (r["sold_differs"] / r["matched"] * 100) if r["matched"] else 0
-    lines.append(f"\nCROSS-TABLE (agents in both, n={r['matched']:,}):")
-    lines.append(
-        f"  sold count differs for {r['sold_differs']:,} agents ({pct:.0f}%),  "
-        f"avg abs gap {r['avg_abs_sold_gap']}"
-    )
-    lines.append(f"  turnaround avg abs gap {r['avg_abs_ta_gap']} days")
-    lines.append(f"  diff% avg abs gap {r['avg_abs_diff_gap']} pp")
+    if baseline_ok:
+        cur.execute(cap(f"""
+            SELECT COUNT(*) matched,
+                   SUM(p.no_of_sold_listings <> n.no_of_sold_listings) sold_differs,
+                   ROUND(AVG(ABS(CAST(p.no_of_sold_listings AS SIGNED)
+                                 - CAST(n.no_of_sold_listings AS SIGNED))), 1) avg_abs_sold_gap,
+                   ROUND(AVG(ABS(COALESCE(p.turnaround_days,0)
+                                 - COALESCE(n.turnaround_days,0))), 1) avg_abs_ta_gap,
+                   ROUND(AVG(ABS(COALESCE(p.avg_difference_in_percentage,0)
+                                 - COALESCE(n.avg_difference_in_percentage,0))), 2) avg_abs_diff_gap
+            FROM {baseline_table} p
+            JOIN {target_table} n
+              ON p.agent_name=n.agent_name AND p.agent_address=n.agent_address
+        """))
+        r = cur.fetchone()
+        pct = (r["sold_differs"] / r["matched"] * 100) if r["matched"] else 0
+        lines.append(f"\nDRIFT vs previous run (agents in both, n={r['matched']:,}):")
+        lines.append(
+            f"  sold count differs for {r['sold_differs']:,} agents ({pct:.0f}%),  "
+            f"avg abs gap {r['avg_abs_sold_gap']}"
+        )
+        lines.append(f"  turnaround avg abs gap {r['avg_abs_ta_gap']} days")
+        lines.append(f"  diff% avg abs gap {r['avg_abs_diff_gap']} pp")
+        lines.append("  (large jumps week-over-week = investigate before trusting the refresh)")
     return lines
 
 
@@ -818,19 +827,34 @@ def main() -> int:
     )
     ap.add_argument("--sample",         type=int, default=40,
                     help="total agents to validate — stratified across size bands (default 40)")
-    ap.add_argument("--seed",           type=int, default=42,
-                    help="RAND() seed for reproducible stratified sampling (default 42)")
+    ap.add_argument("--seed",           type=int, default=None,
+                    help="RAND() seed for the stratified sample. Default: derived from "
+                         "today's date (YYYYMMDD), so scheduled runs rotate through "
+                         "different agents/areas/sizes over time while any single day's "
+                         "run stays reproducible. Pass a fixed seed to repeat a "
+                         "historical sample (e.g. --seed 42).")
     ap.add_argument("--region",
                     help="restrict sample to agents whose address starts with this prefix, e.g. SW")
     ap.add_argument("--agent-id",       type=int,
                     help="validate a single agent_master_id (overrides --sample / --seed)")
-    ap.add_argument("--new-table",      default=NEW_TABLE_DEFAULT,
-                    help=f"fully-qualified python output table (default: {NEW_TABLE_DEFAULT})")
+    ap.add_argument("--table", "--new-table", dest="table",
+                    default=TARGET_TABLE_DEFAULT,
+                    help="table to validate — only needed for ad-hoc scrutiny of a "
+                         f"specific table (default: the live {TARGET_TABLE_DEFAULT})")
+    ap.add_argument("--baseline-table", default=BASELINE_TABLE_DEFAULT,
+                    help="drift-comparison table (default: the _bkp table the atomic "
+                         "swap maintains; drift is skipped if it doesn't exist)")
     ap.add_argument("--skip-section-a", action="store_true",
                     help="skip whole-table health summary (faster when re-running)")
     ap.add_argument("--email",          action="store_true",
                     help="send HTML report via config.py SMTP settings")
     args = ap.parse_args()
+
+    if args.seed is None:
+        # rotate the sample daily: different agents/areas/sizes surface over time
+        args.seed = int(date.today().strftime("%Y%m%d"))
+        print(f"seed not given — using date-derived seed {args.seed} "
+              f"(re-run with --seed {args.seed} to reproduce this sample)")
 
     today = str(date.today())
     cx    = connect()
@@ -840,7 +864,7 @@ def main() -> int:
     try:
         a_lines: list[str] = []
         if not args.skip_section_a:
-            a_lines = section_a(cur, args.new_table)
+            a_lines = section_a(cur, args.table, args.baseline_table)
             for line in a_lines:
                 print(line)
 
@@ -853,15 +877,15 @@ def main() -> int:
         if args.agent_id is not None:
             cur.execute(cap(
                 f"SELECT agent_master_id, agent_name, agent_address, no_of_listings "
-                f"FROM {args.new_table} WHERE agent_master_id = %s"
+                f"FROM {args.table} WHERE agent_master_id = %s"
             ), (args.agent_id,))
             agents = cur.fetchall()
             if not agents:
-                print(f"agent_master_id={args.agent_id} not found in {args.new_table}.")
+                print(f"agent_master_id={args.agent_id} not found in {args.table}.")
                 return 1
         else:
             agents = stratified_sample(
-                cur, args.new_table, args.sample, args.seed, args.region
+                cur, args.table, args.sample, args.seed, args.region
             )
 
         band_tally: Counter = Counter(
@@ -873,7 +897,7 @@ def main() -> int:
         )
         print("-" * 80)
 
-        b_results, tally = section_b(cur, args.new_table, agents, use_master)
+        b_results, tally = section_b(cur, args.table, agents, use_master)
 
         # console output
         hdr = (
@@ -902,13 +926,13 @@ def main() -> int:
         )
 
         _ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
-        _tbl_slug = (args.new_table or "").split(".")[-1][:60]
+        _tbl_slug = (args.table or "").split(".")[-1][:60]
         _fname    = f"report_{_ts}_{_tbl_slug}.html" if _tbl_slug else f"report_{_ts}.html"
         html_path = pathlib.Path(__file__).parent / _fname
 
         html = build_html(
             a_lines, b_results, tally,
-            args.sample, args.seed, args.new_table, today,
+            args.sample, args.seed, args.table, today,
         )
         with open(html_path, "w", encoding="utf-8") as f:
             f.write(html)

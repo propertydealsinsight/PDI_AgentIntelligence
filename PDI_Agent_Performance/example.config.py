@@ -20,10 +20,17 @@ MAIN_PERFORMANCE_TABLE = "pdi_agent_performance"
 #   pdi_agent_performance_<ts> -> pdi_agent_performance
 ATOMIC_REPLACE_MAIN_TABLE = False
 
-# Validation harness table targets (independent of the creation job).
-# Leave empty to fall back to MAIN_PERFORMANCE_TABLE for the python-pipeline side.
-VALIDATION_PROD_TABLE = "PDI_PortalsData.pdi_agent_performance"
-VALIDATION_NEW_TABLE = ""
+# Validation harness overrides — LEAVE EMPTY for normal operation.
+# Defaults are automatic: target = live pdi_agent_performance,
+# baseline = pdi_agent_performance_bkp (maintained by the atomic swap).
+VALIDATION_TARGET_TABLE = ""
+VALIDATION_BASELINE_TABLE = ""
+
+# Pre-swap validation (runs INSIDE the job, against the staging table, before
+# the atomic swap; the swap is blocked if RED agents exceed the threshold).
+# PRESWAP_VALIDATION_SAMPLE = 0 disables it (structural gate still runs).
+PRESWAP_VALIDATION_SAMPLE = 40
+PRESWAP_VALIDATION_MAX_RED = 4
 
 # Email notification sent after every run when enabled
 EnableMailNotification = False

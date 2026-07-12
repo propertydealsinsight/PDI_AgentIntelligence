@@ -65,11 +65,29 @@ last-writer-wins — the same semantics the legacy prod table had. Staging table
 are `CREATE TABLE ... LIKE pdi_agent_performance`, so both keys self-propagate
 **as long as the live table keeps them**.
 
-### D6. Staging + atomic swap
-Runs never write to the live table. Full clean runs rename
-`live → pdi_agent_performance_bkp` (previous `_bkp` is **dropped**) and
-`staging → live` in one atomic statement. Swap is skipped on any failure,
-partial filter, dry-run, or interrupt.
+### D6. Staging + atomic swap, guarded by TWO pre-swap checks (validate-then-swap)
+Runs never write to the live table: the build happens in a timestamped staging
+table (~4.5–5h) while live serves traffic untouched; the swap is one atomic
+`RENAME TABLE` (milliseconds — there is never an outage or a blank table).
+`live → pdi_agent_performance_bkp` (previous `_bkp` is **dropped**),
+`staging → live`. Swap is skipped on any failure, partial filter, dry-run, or
+interrupt, and additionally blocked (fail-closed) by, in order:
+
+1. **Structural gate** (`run_preswap_gate`, `app/db/staging_report.py`): both
+   unique indexes present, row count ≥ 90% of live, zero duplicate (name, addr)
+   keys, ≤ 50 clamped rows, NULL-diff% ≤ 50%, zero count-invariant violations;
+   any gate error blocks.
+2. **Pre-swap RAG validation** (`run_preswap_validation`,
+   `process_agent_performance.py`): the job runs the validation harness against
+   the STAGING table it just built (it knows the name — no discovery needed),
+   with the current live table as drift baseline, on a rotating random sample.
+   Blocks if RED agents exceed `PRESWAP_VALIDATION_MAX_RED` (default 4 of a
+   40-agent sample), if the harness crashes, or if it produces no tally.
+   `PRESWAP_VALIDATION_SAMPLE = 0` disables (gate still runs).
+
+A blocked swap leaves live untouched, retains staging for inspection, emails
+the reasons, and exits non-zero. Standalone harness runs (no arguments) default
+to validating live vs `_bkp` — for ad-hoc review, not part of the swap flow.
 
 ### D7. Provable ingredients, not bare averages
 Published per agent: `no_of_sold_mature`, `no_of_sold_with_soldprice`
@@ -103,7 +121,7 @@ has no developers to adapt.
 | G4 | **Auction agents break the diff% metric.** Guide-price vs hammer-price is structurally shifted (+100–200% is normal, e.g. Bond Wolfe median +171% on 448 points). MAD cannot fix a wholesale-shifted distribution; 16 rows sit clamped at +99.99. The API's `%auction%` name filter misses agents like "Bond Wolfe", which therefore top the DESC ranking. | Misleading customer-facing ranking | Decision pending — TODO T2 |
 | G5 | **The bkp slot is rolling.** Every auto-swap DROPS the previous `pdi_agent_performance_bkp`. Only `_legacy_DND` is a durable backup. | Assumed backup may be one run old / gone | Accept, or snapshot before risky changes |
 | G6 | **`p_generate_agent_master` loop-1 bug**: `temp_rm_property_signatures` joins RM listings against the master's **ZL** columns (`p.agent_name = ptmp.agent_name_zl` + `WHERE ptmp.agent_name_rm IS NULL`) — the already-matched exclusion is wrong on the RM side of loop 1 (loop 2 has it right). | Wasted work; edge-case duplicate matches in the master | Fix the join columns in the procedure |
-| G7 | **Metric ≠ ground truth** (calibration gaps, quantified 2026-07-10): sold counts measure sales *agreed* (fall-throughs ~25% nationally stay in), multi-agency sales credit every listing agent, diff% coverage is 35.8% and its absolute level runs ~2–4pp optimistic vs published benchmarks (late-captured "original" asking + survivorship). 34% of agents have no diff% at all; 16% of those that do rest on <5 points. Relative rankings are defensible for the 10,155 agents with 15+ points; absolute values are not calibrated. | Overclaiming accuracy to customers | Calibration experiments — TODO T3 |
+| G7 | **Metric ≠ ground truth — now MEASURED** (`validation/calibrate_agent_performance.py`, first run 2026-07-10 over 8 outcodes): (C1) we attribute **137%** of the PPD transaction universe as "sold" — i.e. Sold-STC counts exceed the real market itself (fall-throughs + multi-agency double-credit + window drift); **45%** of real transactions feed diff% with a usable price point. (C2) **47%** of Sold-STC listings 18–30 months old never registered with Land Registry → sold counts ≈ **2× actual completions** (upper bound; includes match failures). (C3) baseline-asking flattery is small — only 1.3% of sampled price points had a history-confirmed earlier higher asking (median 9.9pp when present); tracking-lag blind spot exists (41% of listings first tracked >30d after publish). Also: 34% of agents have no diff%; 16% of those that do rest on <5 points. **Bottom line: "sold" must be presented as "sales agreed", never completions; diff% is defensible for relative ranking, uncalibrated in absolute terms.** | Overclaiming accuracy to customers | Rightmove panel (T3), then decide customer-facing wording |
 | G8 | **Validation is self-referential on methodology.** The harness recomputes from the same raw tables with the same definitions — GREEN proves faithful implementation, not truth (see G7). | False confidence | Keep G7 experiments as the external check |
 | G9 | **Withdrawn counts are the least trustworthy column** — 'removed'/'archived'/'EXPIRED' conflate real withdrawals with scraper losses and portal cleanups. Turnaround resets on relisting (inherits agents' days-on-market gaming). | Weak columns quietly treated as strong | Document in any customer-facing use; no fix planned |
 | G10 | **Two config landmines**: `config.py` must keep `MAIN_PERFORMANCE_TABLE="pdi_agent_performance"` (staging schema is LIKE-copied from it — pointing elsewhere loses the unique keys, resurrecting ~2.6k duplicate rows); and MySQL time-hints must sit immediately after SELECT. | Duplicate rows reach customers via join fan-out | Keep config comments; index check is in the harness's Section A |
@@ -116,7 +134,7 @@ has no developers to adapt.
 |---|--------|--------------|
 | T1 | **Schedule the pipeline** (weekly; Windows Task Scheduler or cron on the runner box). Without it the table ages out of the PHP autocomplete in 15 days (G3) and metrics go stale. | ASAP — hard deadline ~15 days after 2026-07-10 |
 | T2 | **Auction-agent decision** (G4): exclude auction listings from diff%, detect & flag auction agents (e.g. a column consumers can filter on), or accept. Then fix the API's `%auction%` filter accordingly. | Next methodology session |
-| T3 | **Calibration experiments** (G7): (a) PPD recall test — % of all Land Registry transactions in sample outcodes attributable to any agent; (b) Rightmove "sold by this agent" spot-check panel (15–20 agents); (c) fall-through bound — STC listings 18+ months old with no PPD registration; (d) asking-price audit — how often `listed_price` was captured post-cut. | Before any accuracy claims to customers |
+| T3 | **Calibration** (G7): C1 PPD recall, C2 fall-through bound and C3 asking audit are IMPLEMENTED and first-run 2026-07-10 (`python validation/calibrate_agent_performance.py`; results in G7 and `validation/calibration_*.txt`). REMAINING: (a) fill the Rightmove panel CSV (`validation/rightmove_panel_*.csv`, 20 agents) from public branch pages; (b) decide customer-facing wording for "sold" (agreed vs completed) given the 2× finding; (c) re-run quarterly. | Panel: next manual session; wording: before any accuracy claims |
 | T4 | **Drop the old event + archive the old procedure** (G1). Also decide the fate of `db/p_generate_agent_performance_corrected.sql` (parked; still has MEAN-not-MEDIAN, no MAD fence, and the `pdi_procedure_logs` control-key collision — see header comment in that file) and the empty `pdi_agent_performance_proc_v2` table left in the DB. | After 2–3 clean scheduled runs |
 | T5 | **Fix `p_generate_agent_master` loop-1 join bug** (G6). | Next master-procedure maintenance |
 | T6 | **Investigate exact-0.00 medians**: 1,111 agents (7.3% of those with a diff%) sit at exactly 0.00. Plausible (sold at asking) for solid samples, suspicious for thin ones (original Leese and Gordon case: 0.00 on 11/60 usable points). | With T3 |
@@ -128,20 +146,25 @@ has no developers to adapt.
 ## 4. Validation harness (how to re-verify after any change)
 
 `validation/validate_agent_performance.py` — strictly read-only, credentials
-from `config.py` (override via `PDI_RO_*` env vars).
+from `config.py` (override via `PDI_RO_*` env vars). **No table names needed**:
+target defaults to live `pdi_agent_performance`, drift baseline defaults to
+`pdi_agent_performance_bkp` (both maintained by the atomic swap). The sample
+seed defaults to today's date, so scheduled runs rotate through different
+agents/areas/sizes over time and anomalies surface cumulatively.
 
 ```bash
-python validation/validate_agent_performance.py --sample 100 --seed 42 --new-table PDI_PortalsData.<staging_table>
-python validation/validate_agent_performance.py --agent-id 6209        # one agent
-python validation/validate_agent_performance.py --skip-section-a ...   # faster re-runs
+python validation/validate_agent_performance.py --sample 100 --email   # scheduled weekly run
+python validation/validate_agent_performance.py --agent-id 6209        # one agent, deep-dive
+python validation/validate_agent_performance.py --seed 20260710 ...    # reproduce a past sample
+python validation/validate_agent_performance.py --table PDI_PortalsData.<t>  # ad-hoc table
 ```
 
 - **Section A**: whole-table health (clamping, nulls, invariants,
-  live+sold+withdrawn ≤ total) + cross-table divergence vs the live table.
+  live+sold+withdrawn ≤ total) + week-over-week drift vs the `_bkp` baseline.
 - **Section B**: independent per-agent recompute from raw
   `property_details`/`property_details_zoopla` via exact `pdi_agent_master`
   pairs, RAG-scored (exit code 0/1/2 = GREEN/AMBER/RED; any RED ⇒ 2).
-- Same seed ⇒ same stratified sample ⇒ run-over-run comparability.
+- Every run prints its seed — rerun with `--seed <n>` to reproduce exactly.
 - HTML report auto-written to `validation/report_*.html`; keep only the latest
   few.
 

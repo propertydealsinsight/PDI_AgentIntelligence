@@ -156,7 +156,12 @@ cython_debug/
 config.py
 *.pem
 
-# Validation HTML reports (generated locally, not for version control)
+# Generated validation/calibration reports (HTML, txt, panel CSVs) — all
+# output now lands in validation/reports/, never in version control
+validation/reports/
+# legacy report locations (pre-2026-07-13 runs wrote directly into validation/)
 validation/report_*.html
 validation/report.html
 validation_report_*.html
+validation/calibration_*.txt
+validation/rightmove_panel_*.csv

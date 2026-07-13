@@ -274,7 +274,9 @@ def c4_rightmove_panel(cur, panel_size: int, seed: int) -> list[str]:
     """), {"seed": seed, "n": panel_size})
     agents = cur.fetchall()
 
-    path = pathlib.Path(__file__).parent / f"rightmove_panel_{date.today():%Y%m%d}.csv"
+    reports_dir = pathlib.Path(__file__).parent / "reports"
+    reports_dir.mkdir(exist_ok=True)
+    path = reports_dir / f"rightmove_panel_{date.today():%Y%m%d}.csv"
     with open(path, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(["agent_master_id", "agent_name", "agent_address",
@@ -346,8 +348,9 @@ def main() -> int:
 
     report = "\n".join(lines)
     print(report)
-    out_path = pathlib.Path(__file__).parent / \
-        f"calibration_{datetime.now():%Y%m%d_%H%M%S}.txt"
+    reports_dir = pathlib.Path(__file__).parent / "reports"
+    reports_dir.mkdir(exist_ok=True)
+    out_path = reports_dir / f"calibration_{datetime.now():%Y%m%d_%H%M%S}.txt"
     out_path.write_text(report, encoding="utf-8")
     print(f"\nreport -> {out_path}\nDONE (no rows were written).")
     return 0

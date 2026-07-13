@@ -4,8 +4,10 @@
 procedure and its process. Everything below was established during the Agent
 Performance rebuild (July 2026, see
 `../PDI_Agent_Performance/docs/agent_performance_design_and_decisions.md`) —
-the numbers are measured from production, not guessed. Status: review not yet
-started; developer assigned.
+the numbers are measured from production, not guessed. Status: review
+**in progress** — developer (Moiz Travadi) surfaced the first concrete defect
+(D7, 2026-07-13) with a real example and diagnostic queries; root cause and
+scope confirmed against production, see D7.
 
 ---
 
@@ -64,6 +66,11 @@ matches.
 - Typical cause: the same Zoopla branch matched to two different RM branches
   (or carried forward + re-matched). Review: unique constraint on the master?
   merge rule?
+- **Root cause confirmed 2026-07-13 → see D7**: the matching strategies that
+  produce 96% of matches accept a pair on name-similarity + ANY shared
+  property signature, with no address check and no minimum evidence threshold
+  — this is what's manufacturing the duplicates, not a downstream artifact.
+  Fix D7 first; D3's duplicate count should fall sharply as a result.
 
 ### D4. Two competing "canonical name" conventions in the estate
 - `agent_master_name` = RM-first (this procedure).
@@ -99,11 +106,74 @@ matches.
 - The rebuild's rename-swap drops/replaces `pdi_agent_master_bkp` — same
   rolling-backup pattern as agent performance.
 
+### D7. Root cause of the 1-branch-to-many mismatches (confirmed 2026-07-13) ⟵ answers D6's open question, likely THE main driver of D3
+
+Developer (Moiz) flagged the concrete failure with a real example: Zoopla
+branch `Foxtons - Hemel Hempstead` (75 Waterhouse Street) matches **three**
+different Rightmove "Foxtons" rows, two of which are clearly wrong branches —
+`Block B, Wilmington Close, Watford` and the unparsed `Foxtons, WD25`
+(`pdi_agent_master` ids 278–280). Root cause verified against production
+(read-only, capped queries — see [[pdi-portals-readonly-db]]):
+
+- **Strategies 1 & 2 (`SAME_AGENT_NAME` / `NORMALISED_*`) require only
+  name-similarity + "at least one shared property signature"
+  (`postcode|price|beds|listing_status`) — no minimum count, and no address
+  correspondence check between `address_rm` and `address_zl` at all.** For a
+  national chain like Foxtons, thousands of listings share the same coarse
+  signature purely by chance, so "≥1 shared signature" is not discriminating
+  evidence — it's noise.
+- Measured with the developer's own `shared_property_count` query: the
+  *correct* pair (id 278, same address both sides) has **271** shared
+  signatures; the two *wrong* pairs have **3** (id 279, out of 1,404 RM
+  listings at that branch) and **1** (id 280, out of 66) — i.e. the wrong
+  matches are surviving on essentially coincidental overlap, several orders of
+  magnitude below the genuine match.
+- **Scope, not an edge case:** of 18,833 distinct matched ZL branches, **3,262
+  (17.3%) map to more than one distinct RM address**; of 21,639 distinct
+  matched RM branches, **967 (4.5%) map to more than one distinct ZL address**.
+  Of all 23,282 matched rows, **22,367 (96%) come from `SAME_AGENT_NAME`**
+  alone — i.e. this is the dominant live strategy, and it's the one with the
+  gap. **7,075 of those `SAME_AGENT_NAME` rows sit inside a 1-to-many ZL
+  duplicate group.**
+- This is very likely the dominant contributor to the ~4.4k duplicate rows in
+  D3 — a matching bug that *produces* duplicates, not just a downstream
+  symptom. Should be fixed together with D3, not separately.
+
+**Suggested fix (plan of action):**
+1. Require a **minimum shared-property-count threshold** before accepting a
+   `SAME_AGENT_NAME`/`NORMALISED_*` match (not just "≥1"). Pick the cutoff from
+   the real distribution — pull `shared_property_count` for a sample of the
+   3,262 flagged ZL groups and look at where genuine vs. coincidental pairs
+   separate (271 vs. 3/1 in the Foxtons case suggests the gap is wide and a
+   modest threshold, e.g. requiring shared count to be some multiple of the
+   next-best candidate, would cleanly separate them) — do not guess a fixed
+   number without checking the distribution first.
+2. Add an **explicit address-correspondence signal** as a required (or
+   heavily weighted) condition — e.g. matching postcode sector between
+   `address_rm`/`address_zl`, or address-string similarity — so brand-name
+   match alone can never carry a pair. This is literally what the developer
+   flagged: "we are not matching agent branch address."
+3. When a branch has multiple candidate matches on the other portal, **keep
+   only the best one** (highest shared-property-count / address-similarity),
+   not all candidates that clear the threshold independently — today's loop
+   lets every qualifying pair through.
+4. **Retrofit the existing ~4k affected rows**: run the shared-property-count
+   query across the 3,262+967 flagged groups, keep the strongest pair per
+   branch, demote/delete the rest (or route to
+   `pdi_agent_master_probable_match` for human review rather than silently
+   dropping).
+5. Commit the developer's two diagnostic queries (shared-property-count per
+   `agent_master_id`; postcode-scoped validation) into this repo as reusable
+   validation tools — they're the right building blocks for both the one-off
+   cleanup and an ongoing pre-swap gate (see review output #4 below), not just
+   one-off review aids.
+
 ### D6. Smaller review items
 - `INSERT IGNORE` semantics depend on whatever unique keys `pdi_agent_master`
   has — verify what they actually are (unknown as of this brief).
-- One RM branch can match multiple ZL branches (and vice versa) — is that
-  intended? What dedups it?
+- ~~One RM branch can match multiple ZL branches (and vice versa) — is that
+  intended? What dedups it?~~ **Answered 2026-07-13, see D7**: not intended,
+  confirmed root cause, nothing dedups it today.
 - `pdi_agent_master_probable_match` (`SAME_FULL_ADDRESS` pool): what is the
   human-review workflow? Rows with `NOT_SAME` are kept, everything else deleted
   each run — is the review loop actually happening?
@@ -120,12 +190,17 @@ matches.
 1. Repo baseline: current procedure source + `pdi_agent_master` DDL (with
    indexes) committed here.
 2. Decisions on: stable ids (D1), canonical name+address (D4), duplicate policy
-   (D3).
-3. Fix list with the D2 bug as the first quick win.
+   (D3), minimum-evidence threshold + address-correspondence rule (D7).
+3. Fix list, in priority order: **D7's threshold + address check (root cause
+   of most duplicates), D2 (quick win, one-line join fix), then D1/D3/D4**.
 4. A validate-then-swap gate for the master rebuild (row counts vs previous,
-   duplicate keys, share of matched vs single-portal rows) mirroring
+   duplicate keys, share of matched vs single-portal rows, **share of
+   ZL/RM branches with >1 match on the other portal — D7's check**) mirroring
    `PDI_Agent_Performance`'s pattern.
 5. Documented scheduling contract: master rebuild → then performance refresh.
+6. One-off retrofit pass over the ~4k rows currently affected by D7/D3 (see
+   D7 step 4) once the threshold/address rule is agreed, so the fix also
+   cleans up the existing backlog and not just future rebuilds.
 
 ---
 *Measurements in this brief: July 2026, production `PDI_PortalsData` via

@@ -1,0 +1,440 @@
+<!doctype html>
+<title>Agent Master Review — Scale &amp; Plan</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --card-shadow:    0 1px 2px rgba(11,11,11,0.06);
+
+    --slot-blue:      #2a78d6;
+    --slot-aqua:      #1baf7a;
+    --slot-yellow:    #eda100;
+    --slot-orange:    #eb6834;
+
+    --good:           #0ca30c;
+    --warning:        #fab219;
+    --critical:       #d03b3b;
+
+    --code-bg:        #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --card-shadow:    0 1px 2px rgba(0,0,0,0.3);
+
+      --slot-blue:      #3987e5;
+      --slot-aqua:      #199e70;
+      --slot-yellow:    #c98500;
+      --slot-orange:    #d95926;
+
+      --good:           #0ca30c;
+      --warning:        #fab219;
+      --critical:       #e66767;
+
+      --code-bg:        #232320;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface-1: #1a1a19; --page:#0d0d0d; --text-primary:#fff; --text-secondary:#c3c2b7; --text-muted:#898781;
+    --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,0.10); --card-shadow:0 1px 2px rgba(0,0,0,0.3);
+    --slot-blue:#3987e5; --slot-aqua:#199e70; --slot-yellow:#c98500; --slot-orange:#d95926;
+    --critical:#e66767; --code-bg:#232320;
+  }
+  :root[data-theme="light"] {
+    --surface-1:#fcfcfb; --page:#f9f9f7; --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,0.10); --card-shadow:0 1px 2px rgba(11,11,11,0.06);
+    --slot-blue:#2a78d6; --slot-aqua:#1baf7a; --slot-yellow:#eda100; --slot-orange:#eb6834;
+    --critical:#d03b3b; --code-bg:#f0efec;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 24px 100px; }
+
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 19px; margin: 0 0 4px; }
+  h3 { font-size: 15px; margin: 0 0 10px; color: var(--text-primary); }
+  .subtitle { color: var(--text-secondary); font-size: 15px; margin: 0 0 28px; }
+  .eyebrow {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--text-muted); font-weight: 600; margin: 0 0 6px;
+  }
+  section { margin: 44px 0; }
+  section > .eyebrow { margin-top: 0; }
+
+  p { color: var(--text-secondary); font-size: 14.5px; }
+  strong { color: var(--text-primary); }
+  code {
+    background: var(--code-bg); padding: 1px 5px; border-radius: 4px;
+    font-size: 13px; color: var(--text-primary);
+  }
+
+  .callout {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px 22px; box-shadow: var(--card-shadow);
+  }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .stat-row { display: flex; gap: 14px; flex-wrap: wrap; margin: 18px 0; }
+  .stat-tile {
+    flex: 1 1 200px; background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px; box-shadow: var(--card-shadow);
+  }
+  .stat-tile .n { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; }
+  .stat-tile .lbl { font-size: 12.5px; color: var(--text-secondary); margin-top: 2px; }
+  .stat-tile .sub { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; }
+  .stat-tile.good .n { color: var(--good); }
+  .stat-tile.warning .n { color: #b8790f; }
+  @media (prefers-color-scheme: dark) { .stat-tile.warning .n { color: var(--warning); } }
+  :root[data-theme="dark"] .stat-tile.warning .n { color: var(--warning); }
+  .stat-tile.critical .n { color: var(--critical); }
+
+  /* stacked bar */
+  .stackbar { display: flex; height: 34px; border-radius: 6px; overflow: hidden; width: 100%; }
+  .stackbar > div { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 14px 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.hl td { background: rgba(208,59,59,0.08); }
+  tr.hl-good td { background: rgba(12,163,12,0.08); }
+
+  /* grouped bar chart */
+  .chart-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; box-shadow: var(--card-shadow); }
+  .gbar-wrap { display: flex; align-items: flex-end; gap: 28px; height: 180px; padding: 0 6px; border-bottom: 1px solid var(--baseline); }
+  .gbar-group { display: flex; flex-direction: column; align-items: center; flex: 1; height: 100%; justify-content: flex-end; }
+  .gbar-bars { display: flex; align-items: flex-end; gap: 5px; height: 100%; width: 100%; justify-content: center; }
+  .gbar-bars .bar { width: 26px; border-radius: 3px 3px 0 0; position: relative; }
+  .gbar-bars .bar .val { position: absolute; top: -18px; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 600; color: var(--text-primary); }
+  .gbar-label { margin-top: 8px; font-size: 12px; color: var(--text-secondary); text-align: center; }
+
+  /* flow diagram */
+  .flow-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  @media (max-width: 720px) { .flow-cols { grid-template-columns: 1fr; } }
+  .flow-col h3 { text-align: center; }
+  .flow { display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+  .fbox {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-size: 12.5px; box-shadow: var(--card-shadow); position: relative;
+  }
+  .fbox .t { font-weight: 600; font-size: 12.5px; margin-bottom: 2px; }
+  .fbox .d { color: var(--text-secondary); font-size: 11.5px; }
+  .fbox.problem { border-color: var(--critical); box-shadow: 0 0 0 1px var(--critical) inset; }
+  .fbox.fixed { border-color: var(--good); box-shadow: 0 0 0 1px var(--good) inset; }
+  .fbox.new { border-color: var(--slot-blue); box-shadow: 0 0 0 1px var(--slot-blue) inset; border-style: dashed; }
+  .fbadge {
+    display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; padding: 2px 6px; border-radius: 10px; margin-left: 6px; vertical-align: 1px;
+  }
+  .fbadge.problem { background: rgba(208,59,59,0.15); color: var(--critical); }
+  .fbadge.fixed { background: rgba(12,163,12,0.15); color: var(--good); }
+  .fbadge.new { background: rgba(42,120,214,0.15); color: var(--slot-blue); }
+  .arrow { text-align: center; color: var(--text-muted); font-size: 14px; padding: 3px 0; }
+
+  .plan-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .plan-cols { grid-template-columns: 1fr; } }
+  .plan-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 18px 18px; box-shadow: var(--card-shadow); }
+  .plan-card .tag { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; padding: 3px 8px; border-radius: 10px; display: inline-block; margin-bottom: 10px; }
+  .plan-card.now .tag { background: rgba(12,163,12,0.15); color: var(--good); }
+  .plan-card.next .tag { background: rgba(250,178,25,0.20); color: #8a5a00; }
+  @media (prefers-color-scheme: dark) { .plan-card.next .tag { color: var(--warning); } }
+  :root[data-theme="dark"] .plan-card.next .tag { color: var(--warning); }
+  .plan-card.later .tag { background: rgba(82,81,78,0.15); color: var(--text-secondary); }
+  .plan-card ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-secondary); }
+  .plan-card li { margin-bottom: 8px; }
+
+  .foot-note { font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--grid); padding-top: 16px; margin-top: 48px; }
+
+  .status-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px;
+    white-space: nowrap;
+  }
+  .status-badge.good { background: rgba(12,163,12,0.15); color: var(--good); }
+  .status-badge.warning { background: rgba(250,178,25,0.20); color: #8a5a00; }
+  @media (prefers-color-scheme: dark) { .status-badge.warning { color: var(--warning); } }
+  :root[data-theme="dark"] .status-badge.warning { color: var(--warning); }
+  .status-badge.info { background: rgba(137,135,129,0.18); color: var(--text-secondary); }
+</style>
+
+<div class="wrap">
+
+  <p class="eyebrow">PDI_AgentIntelligence · PDI_Agent_Master review</p>
+  <h1>Agent Master matching — how big is the problem, and what do we do about it</h1>
+  <p class="subtitle">Companion to <code>AGENT_MASTER_REVIEW_BRIEF.md</code>. All figures below are measured against production <code>PDI_PortalsData</code> on 2026-07-13 via the read-only account, or sampled/extrapolated from it — each number below says which.</p>
+
+  <div class="callout">
+    <p><strong>Headline:</strong> the matching engine has been live 12+ months without a visible incident because most of what it does is right, and the failure mode (wrong branch, right brand) mostly shows up as double-counted stats rather than a customer-facing error. But it is not a rare edge case: roughly <strong>1 in 3 cross-portal matches</strong> sits in a branch group where the same brand name attached to more than one address on the other portal, and about <strong>1 in 10 of all matches</strong> is a wrong branch pairing we can already prove is wrong with data we already have.</p>
+    <p>The fix is layered on purpose: a chunk of this is fixable today with no new rule and no risk to the "obviously right" majority; a chunk needs a new address-matching rule that has to be designed and validated first, precisely <em>because</em> a low-evidence match isn't always a wrong one — small, genuinely quiet branches look the same in the data as a bad match. Rushing that part is how we'd trade one class of error for another.</p>
+  </div>
+
+  <section>
+    <p class="eyebrow">Defect index</p>
+    <h2>D1&ndash;D7 — every issue this review has found, in one place</h2>
+    <p>These labels are referenced throughout this page and in <code>AGENT_MASTER_REVIEW_BRIEF.md</code> §2 (the full write-up for each lives there). D5 isn't a defect — it's a list of things elsewhere in the codebase that read <code>pdi_agent_master</code> today and must not break.</p>
+    <table>
+      <thead><tr><th>id</th><th>What it is</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>D1</strong></td>
+          <td><code>agent_master_id</code> isn't stable across rebuilds — every regeneration reassigns all ids, so anything storing that id (Agent Performance) is only valid against the snapshot it was built from.</td>
+          <td><span class="status-badge warning">Open — needs decision</span></td>
+        </tr>
+        <tr>
+          <td><strong>D2</strong></td>
+          <td>Loop-1 copy-paste bug: the RM "already matched" exclusion join compared against the master's <em>ZL</em> columns instead of RM, so it was a silent no-op — already-matched RM branches kept re-entering the matching step every run.</td>
+          <td><span class="status-badge good">Fixed in repo</span></td>
+        </tr>
+        <tr>
+          <td><strong>D3</strong></td>
+          <td>~4.4k duplicate rows for the same real-world branch sitting in <code>pdi_agent_master</code> today.</td>
+          <td><span class="status-badge warning">Open — root cause is D7</span></td>
+        </tr>
+        <tr>
+          <td><strong>D4</strong></td>
+          <td>Two competing "canonical name" conventions across the estate: this procedure is RM-first, everything downstream (ranking API, autocomplete, Agent Performance) is ZL-first — 25.5% of rows disagree between the two.</td>
+          <td><span class="status-badge warning">Open — needs cross-team sign-off</span></td>
+        </tr>
+        <tr>
+          <td><strong>D5</strong></td>
+          <td>Not a defect — the list of downstream consumers (Agent Performance, MarketIntelligenceFeed, the RM/ZL merge procedures, the ranking API) that must not break while any of this is fixed.</td>
+          <td><span class="status-badge info">Informational</span></td>
+        </tr>
+        <tr>
+          <td><strong>D6</strong></td>
+          <td>Smaller review items: unclear <code>INSERT IGNORE</code> unique-key semantics, no logging/metrics from the procedure, unclear human-review workflow for the probable-match queue. (Its "does the procedure source live in the repo?" item is now done — see below.)</td>
+          <td><span class="status-badge warning">Partly open</span></td>
+        </tr>
+        <tr>
+          <td><strong>D7</strong></td>
+          <td>Root cause of the branch-mismatch problem: the dominant matching strategy accepts a pair on brand-name similarity + any coincidental shared listing, with no address check and no evidence threshold. This is the finding this whole report is about.</td>
+          <td><span class="status-badge good">Confirmed — quick-win rolling out</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <p class="eyebrow">1 · The whole picture</p>
+    <h2>63,617 rows in <code>pdi_agent_master</code> today</h2>
+    <p>Just over a third are cross-portal matches (a Rightmove branch paired with a Zoopla branch); the rest are single-portal rows sitting alone because no counterpart was ever proposed.</p>
+
+    <div class="stackbar">
+      <div style="width:45.1%; background:var(--slot-yellow);">RM-only 45%</div>
+      <div style="width:18.3%; background:var(--slot-orange);">ZL-only 18%</div>
+      <div style="width:36.6%; background:var(--slot-blue);">Matched 37%</div>
+    </div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--slot-yellow)"></span>RM-only — 28,662 rows</span>
+      <span><span class="sw" style="background:var(--slot-orange)"></span>ZL-only — 11,673 rows</span>
+      <span><span class="sw" style="background:var(--slot-blue)"></span>Cross-portal matched — 23,282 rows</span>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-tile">
+        <div class="n">96%</div>
+        <div class="lbl">of matches come from one strategy</div>
+        <div class="sub"><code>SAME_AGENT_NAME</code> (name-match + property evidence) — 22,367 of 23,282. This is the strategy D7 lives in; it is effectively the whole system, not a corner case.</div>
+      </div>
+      <div class="stat-tile">
+        <div class="n">3,666</div>
+        <div class="lbl">pairs awaiting human review right now</div>
+        <div class="sub">in <code>pdi_agent_master_probable_match</code> (<code>SAME_FULL_ADDRESS</code>); a further 5,855 have already been reviewed and rejected (<code>NOT_SAME</code>), kept as a standing denylist.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">2 · How much of the matched 23,282 is actually right?</p>
+    <h2>Confidence tiers</h2>
+    <p>We used the shared-listing-evidence query (developer's own diagnostic, see <code>queries/validate_shared_property_count.sql</code>) against a random branch sample to size three groups. <strong>This split is a sample-based estimate (33–40 branches per group), not a full census</strong> — treat the row counts as directional, not exact; a chunked full-population run (see §6) would replace it with real numbers.</p>
+
+    <div class="stackbar">
+      <div style="width:73%; background:var(--good);">Correct 73%</div>
+      <div style="width:11%; background:var(--critical);">Wrong, provable 11%</div>
+      <div style="width:16%; background:var(--warning); color:#3a2600;">Ambiguous 16%</div>
+    </div>
+    <div class="legend">
+      <span><span class="sw" style="background:var(--good)"></span>Working correctly, no action needed</span>
+      <span><span class="sw" style="background:var(--critical)"></span>Confirmed/likely wrong — fixable now</span>
+      <span><span class="sw" style="background:var(--warning)"></span>Ambiguous — needs the address rule</span>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat-tile good">
+        <div class="n">~17,000</div>
+        <div class="lbl">rows we're confident are right (≈73%)</div>
+        <div class="sub">Either a clean 1:1 pairing with strong shared-listing evidence, or the best-evidenced sibling in a branch group where a weaker rival also exists.</div>
+      </div>
+      <div class="stat-tile critical">
+        <div class="n">~2,500</div>
+        <div class="lbl">rows already provable as wrong (≈11%)</div>
+        <div class="sub">Sit inside a duplicate branch-group <em>and</em> carry only single-digit shared-listing counts next to a sibling with 10–100x more evidence — the Foxtons pattern (271 vs. 3 vs. 1), at scale.</div>
+      </div>
+      <div class="stat-tile warning">
+        <div class="n">~3,700</div>
+        <div class="lbl">rows we genuinely can't call yet (≈16%)</div>
+        <div class="sub">Low shared-listing counts but <em>no</em> competing candidate proposed — could be a real, quiet branch (correct) or a wrong match nobody happened to contest (also wrong). Property-count alone can't tell these apart.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">3 · Where the "wrong" number comes from — the proof</p>
+    <h2>Foxtons — Hemel Hempstead (the case that started this review)</h2>
+    <p>One Zoopla branch, matched to three Rightmove rows under the same brand name. Re-run against production, the shared-listing-evidence query separates the real match from the noise cleanly:</p>
+    <table>
+      <thead><tr><th>id</th><th>Rightmove address</th><th>Zoopla address</th><th>Matching algo</th><th class="num">Shared listings</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr class="hl-good"><td>278</td><td>75 Waterhouse Street, Hemel Hempstead</td><td>75 Waterhouse Street, Hemel Hempstead</td><td>SAME_AGENT_NAME</td><td class="num">271</td><td>Correct — same address both sides</td></tr>
+        <tr class="hl"><td>279</td><td>Block B, Wilmington Close, <strong>Watford</strong></td><td>75 Waterhouse Street, Hemel Hempstead</td><td>SAME_AGENT_NAME</td><td class="num">3</td><td>Wrong branch — 3 of 1,404 RM listings, coincidence</td></tr>
+        <tr class="hl"><td>280</td><td>Foxtons, WD25 <em>(unparsed)</em></td><td>75 Waterhouse Street, Hemel Hempstead</td><td>SAME_AGENT_NAME</td><td class="num">1</td><td>Wrong branch — 1 of 66 RM listings, coincidence</td></tr>
+      </tbody>
+    </table>
+    <p>Nothing in the matching logic requires <code>address_rm</code> and <code>address_zl</code> to correspond, and nothing requires more than one coincidental shared listing. For a national chain that's fatal — thousands of listings across branches will share the same coarse <code>postcode|price|beds|status</code> signature by chance.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">4 · Is this a one-off or a pattern?</p>
+    <h2>Evidence strength across the sampled population</h2>
+    <p>Bucketing the shared-listing count for both branch samples shows the Foxtons pattern is systemic, not a one-off — and shows it isn't confined to branches that visibly have a rival match either:</p>
+    <div class="chart-card">
+      <div class="gbar-wrap">
+        <div class="gbar-group">
+          <div class="gbar-bars">
+            <div class="bar" style="height:31%; background:var(--slot-blue);"><span class="val">18%</span></div>
+            <div class="bar" style="height:38%; background:var(--slot-aqua);"><span class="val">23%</span></div>
+          </div>
+          <div class="gbar-label">&lt; 5 shared listings</div>
+        </div>
+        <div class="gbar-group">
+          <div class="gbar-bars">
+            <div class="bar" style="height:26%; background:var(--slot-blue);"><span class="val">15%</span></div>
+            <div class="bar" style="height:21%; background:var(--slot-aqua);"><span class="val">13%</span></div>
+          </div>
+          <div class="gbar-label">5&ndash;19</div>
+        </div>
+        <div class="gbar-group">
+          <div class="gbar-bars">
+            <div class="bar" style="height:51%; background:var(--slot-blue);"><span class="val">30%</span></div>
+            <div class="bar" style="height:46%; background:var(--slot-aqua);"><span class="val">28%</span></div>
+          </div>
+          <div class="gbar-label">20&ndash;99</div>
+        </div>
+        <div class="gbar-group">
+          <div class="gbar-bars">
+            <div class="bar" style="height:61%; background:var(--slot-blue);"><span class="val">36%</span></div>
+            <div class="bar" style="height:63%; background:var(--slot-aqua);"><span class="val">38%</span></div>
+          </div>
+          <div class="gbar-label">100+</div>
+        </div>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--slot-blue)"></span>Rows in a duplicate branch-group (n=33 sample)</span>
+        <span><span class="sw" style="background:var(--slot-aqua)"></span>Rows with no visible rival — "clean" (n=40 sample)</span>
+      </div>
+    </div>
+    <p style="margin-top:14px;">The near-zero bucket shows up at similar-or-higher rates in the "clean" sample too (23% vs. 18%) — confirming that weak evidence isn't only a duplicate-group problem. That's exactly the ~3,700-row "ambiguous" tier above: we can't fix those by demoting the loser of a pair, because there is no visible loser — we'd need the address rule to tell a real quiet branch from a bad match.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">5 · Design diagram</p>
+    <h2>Current state vs. planned state</h2>
+    <div class="flow-cols">
+      <div class="flow-col">
+        <h3>Current — <code>p_generate_agent_master</code> today</h3>
+        <div class="flow">
+          <div class="fbox"><div class="t">Seed staging table</div><div class="d">carries forward confirmed + MANUAL matches</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox problem"><div class="t">Loop 1 · name match <span class="fbadge problem">gap</span></div><div class="d">brand-name similarity + <strong>≥1</strong> shared listing signature. No minimum count. No address check. 96% of all matches come from here.</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox"><div class="t">Loop 2 · address-similarity pool</div><div class="d">signature + full-address similarity → human-review queue (3,666 waiting)</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox"><div class="t">Loop 3 · leftovers</div><div class="d">unmatched RM/ZL rows inserted single-portal</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox problem"><div class="t">Swap to live <span class="fbadge problem">gap</span></div><div class="d">no validation gate — a half-failed rebuild is invisible</div></div>
+        </div>
+      </div>
+      <div class="flow-col">
+        <h3>Planned — layered fix</h3>
+        <div class="flow">
+          <div class="fbox"><div class="t">Seed staging table</div><div class="d">unchanged</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox fixed"><div class="t">Loop 1 · name match <span class="fbadge fixed">D2 fixed</span> <span class="fbadge new">D7 planned</span></div><div class="d">D2 (repo-fixed, not deployed): RM exclusion join no longer compares against ZL columns. D7 (planned): requires a minimum evidence count (not "≥1") <strong>and</strong> address/postcode-sector correspondence; keeps only the best candidate per branch instead of every qualifying pair</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox"><div class="t">Loop 2 · address-similarity pool</div><div class="d">unchanged</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox"><div class="t">Loop 3 · leftovers</div><div class="d">unchanged</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox new"><div class="t">Validate-then-swap gate <span class="fbadge new">new</span></div><div class="d">row counts vs. previous, zero/near-zero one-branch-to-many groups, matched-vs-single-portal share — mirrors the Agent Performance pipeline's gate</div></div>
+          <div class="arrow">▼</div>
+          <div class="fbox"><div class="t">Swap to live</div><div class="d">blocked if the gate fails</div></div>
+        </div>
+        <div class="arrow" style="margin-top:8px;">+ one-off, run once</div>
+        <div class="fbox new"><div class="t">Retrofit pass <span class="fbadge new">new</span></div><div class="d">apply the same evidence check to the ~8,354 rows already in duplicate groups; keep the best-evidenced sibling, demote the rest — cleans up the existing backlog, not just future rebuilds</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">6 · Rollout</p>
+    <h2>Now / next / later</h2>
+    <div class="plan-cols">
+      <div class="plan-card now">
+        <span class="tag">Roll out now</span>
+        <h3>Low risk, no new design decision</h3>
+        <ul>
+          <li><strong>D2 loop-1 bug — fixed in repo</strong> (<code>procedure/p_generate_agent_master.sql</code>, commit <code>1f04fb1</code>): the RM exclusion join compared against the master's ZL columns instead of RM, so it was a silent no-op. One-line fix, isolated commit after a baseline commit of the unmodified procedure. <strong>Not yet deployed</strong> — needs a <code>CREATE OR REPLACE PROCEDURE</code> against production before the next scheduled run picks it up.</li>
+          <li><strong>Retrofit the ~2,500 provable-wrong rows</strong> — for every branch-group, keep the sibling with the strongest shared-listing evidence, demote/delete the rest. Uses the existing diagnostic query; no new matching rule required.</li>
+          <li>Commit the diagnostic queries into the repo as permanent tooling (done — <code>queries/</code> folder) so this check can be re-run on demand, not just during this review.</li>
+        </ul>
+      </div>
+      <div class="plan-card next">
+        <span class="tag">Next — needs design + validation</span>
+        <h3>The ~3,700 ambiguous rows, and the rule itself</h3>
+        <ul>
+          <li>Design the address-correspondence rule (postcode sector match, or address-string similarity) and the minimum-evidence threshold — pick both from the real distribution, not a guess.</li>
+          <li>Run a full outcode-by-outcode census (chunked like the procedure's own loop, to respect read-only execution-time caps) to replace today's 33/40-branch sample with exact figures before trusting the threshold.</li>
+          <li>Build the rule into Loop 1 and re-validate against the ~3,700 ambiguous rows specifically — this is where a wrong threshold would misclassify a genuinely small, quiet branch as a bad match.</li>
+          <li>Build the validate-then-swap gate (row counts, duplicate-group share, matched-vs-single-portal split) before the fixed procedure ever runs unattended.</li>
+        </ul>
+      </div>
+      <div class="plan-card later">
+        <span class="tag">Separate track</span>
+        <h3>Structural decisions (brief §2, D1/D3/D4)</h3>
+        <ul>
+          <li><strong>D1</strong> — <code>agent_master_id</code> isn't stable across rebuilds; needs a stable-id or business-key decision.</li>
+          <li><strong>D3</strong> — duplicate rows overall; should shrink sharply once D7 is fixed, but a unique-constraint decision is still separate.</li>
+          <li><strong>D4</strong> — RM-first vs. ZL-first canonical name/address; needs sign-off from Agent Performance, MarketIntelligenceFeed, and the ranking API (brief §D5) before changing.</li>
+          <li>These don't block the D7 rollout above, but they do need their own decision before the master rebuild is considered "done."</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot-note">
+    Methodology: figures in §1 and the 17.3%/4.5%/35.9% group-scope numbers are exact, from full-table aggregate queries against <code>PDI_PortalsData.pdi_agent_master</code> (63,617 rows — cheap to scan in full). The confidence-tier split in §2 and the bucket chart in §4 are extrapolated from capped, per-branch shared-listing-evidence queries against a random sample (33 duplicate-group branches, 40 clean branches) — the full evidence-count computation across all 23,282 matched branches in one query timed out against the production read-only cap and was abandoned rather than pushed harder, per the standing rule for this database (see <code>[[pdi-portals-readonly-db]]</code>); a proper census needs to be chunked the same way the procedure itself chunks by outcode. All queries read-only via <code>pdi_prospect_readonly</code>.
+  </div>
+
+</div>

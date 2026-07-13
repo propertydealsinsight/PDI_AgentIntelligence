@@ -198,8 +198,8 @@
       <tbody>
         <tr>
           <td><strong>D1</strong></td>
-          <td><code>agent_master_id</code> isn't stable across rebuilds — every regeneration reassigns all ids, so anything storing that id (Agent Performance) is only valid against the snapshot it was built from.</td>
-          <td><span class="status-badge warning">Open — needs decision</span></td>
+          <td><code>agent_master_id</code> isn't stable across rebuilds — every regeneration reassigns all ids, so anything storing that id (Agent Performance) is only valid against the snapshot it was built from. <strong>Direction agreed:</strong> the id becomes a permanent, never-reassigned master key; add an active/inactive status to decommission agents instead of ever reassigning or dropping ids. Whether this replaces or sits alongside the current column is still open, but impact looks low either way — see below.</td>
+          <td><span class="status-badge warning">Direction agreed — impact check done</span></td>
         </tr>
         <tr>
           <td><strong>D2</strong></td>
@@ -238,7 +238,8 @@
   <section>
     <p class="eyebrow">1 · The whole picture</p>
     <h2>63,617 rows in <code>pdi_agent_master</code> today</h2>
-    <p>Just over a third are cross-portal matches (a Rightmove branch paired with a Zoopla branch); the rest are single-portal rows sitting alone because no counterpart was ever proposed.</p>
+    <p>Just over a third are cross-portal matches (a Rightmove branch paired with a Zoopla branch). The rest are single-portal rows — and <strong>that split is not itself an error</strong>. Rightmove and Zoopla will always have real coverage differences: measured independently of the master table, Rightmove carries <strong>49,364</strong> distinct (agent, branch-address) pairs against Zoopla's <strong>30,490</strong> — Rightmove genuinely has ~62% more branch listings to begin with, so RM-only rows outnumbering ZL-only rows is expected, not a sign the matcher missed them. The thing worth calling an error is specifically §2–4 below: branches that <em>were</em> matched, to the <em>wrong</em> counterpart.</p>
+    <p>One nuance the single/cross split doesn't capture at all: <strong>active vs. inactive</strong>. Some single-portal (and matched) rows are agents who simply aren't trading any more — the master has no concept of this today, which is a separate, real gap (see D1 below), not the D7 matching-quality problem this report is mostly about.</p>
 
     <div class="stackbar">
       <div style="width:45.1%; background:var(--slot-yellow);">RM-only 45%</div>
@@ -398,7 +399,15 @@
   </section>
 
   <section>
-    <p class="eyebrow">6 · Rollout</p>
+    <p class="eyebrow">6 · D1 — is a stable master id actually safe to introduce?</p>
+    <h2>Checked, not assumed: nothing joins on <code>agent_master_id</code> today</h2>
+    <p>Direction agreed with Moiz: <code>id</code> should become a permanent key — assigned once, never reassigned on rebuild, with an active/inactive status added so a decommissioned agent gets flagged rather than silently vanishing or being reissued to someone else. The open question was impact: does anything outside this table rely on the id's <em>current</em> (unstable) values, such that changing how it behaves would require touching other systems?</p>
+    <p>Searched every repo this account has access to for the literal column name. Result: <strong><code>agent_master_id</code> appears in exactly one place outside <code>PDI_PortalsData</code> itself</strong> — <code>PDI_Agent_Performance</code>, where it is written into the performance table purely as a traceability column (<code>agent.id</code> copied in at upsert time). It is <strong>not</strong> the join key anywhere: the read side (<code>FETCH_AGENTS_QUERY</code>) selects <code>p.id</code> only to iterate the current snapshot within a single run, and every actual lookup — the performance table's own unique key, and the ranking API's joins in <code>PropertyDataDBAPIs</code> — goes through <code>(agent_name, agent_address)</code>, ZL-first. Nothing in <code>MarketIntelligenceFeed</code>, the RM/ZL merge procedures, or any other repo references the column at all.</p>
+    <p>Practical consequence: the stored <code>agent_master_id</code> in the performance table <em>already</em> changes every week under the current unstable scheme (the pipeline re-fetches from whatever snapshot exists at run time) — nobody currently treats it as durable, so nothing breaks by making it durable. This is a <strong>low-impact, additive change</strong>: make the existing <code>id</code> column stable and add the active/inactive flag, rather than introducing a parallel column or requiring any downstream migration. Worth a final grep pass closer to implementation time in case something references it indirectly (e.g. a saved report or ad-hoc script outside these repos), but nothing found here argues against just doing it.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">7 · Rollout</p>
     <h2>Now / next / later</h2>
     <div class="plan-cols">
       <div class="plan-card now">
@@ -418,13 +427,13 @@
           <li>Run a full outcode-by-outcode census (chunked like the procedure's own loop, to respect read-only execution-time caps) to replace today's 33/40-branch sample with exact figures before trusting the threshold.</li>
           <li>Build the rule into Loop 1 and re-validate against the ~3,700 ambiguous rows specifically — this is where a wrong threshold would misclassify a genuinely small, quiet branch as a bad match.</li>
           <li>Build the validate-then-swap gate (row counts, duplicate-group share, matched-vs-single-portal split) before the fixed procedure ever runs unattended.</li>
+          <li><strong>D1</strong> — direction agreed (permanent id + active/inactive status, see §6) and impact-checked as low-risk; still needs the actual implementation: how the rebuild's create-fresh-table-and-rename pattern carries ids forward instead of reassigning them, and the active/inactive definition itself (e.g. no listing activity in N months on either portal).</li>
         </ul>
       </div>
       <div class="plan-card later">
         <span class="tag">Separate track</span>
-        <h3>Structural decisions (brief §2, D1/D3/D4)</h3>
+        <h3>Structural decisions (brief §2, D3/D4)</h3>
         <ul>
-          <li><strong>D1</strong> — <code>agent_master_id</code> isn't stable across rebuilds; needs a stable-id or business-key decision.</li>
           <li><strong>D3</strong> — duplicate rows overall; should shrink sharply once D7 is fixed, but a unique-constraint decision is still separate.</li>
           <li><strong>D4</strong> — RM-first vs. ZL-first canonical name/address; needs sign-off from Agent Performance, MarketIntelligenceFeed, and the ranking API (brief §D5) before changing.</li>
           <li>These don't block the D7 rollout above, but they do need their own decision before the master rebuild is considered "done."</li>
@@ -434,7 +443,7 @@
   </section>
 
   <div class="foot-note">
-    Methodology: figures in §1 and the 17.3%/4.5%/35.9% group-scope numbers are exact, from full-table aggregate queries against <code>PDI_PortalsData.pdi_agent_master</code> (63,617 rows — cheap to scan in full). The confidence-tier split in §2 and the bucket chart in §4 are extrapolated from capped, per-branch shared-listing-evidence queries against a random sample (33 duplicate-group branches, 40 clean branches) — the full evidence-count computation across all 23,282 matched branches in one query timed out against the production read-only cap and was abandoned rather than pushed harder, per the standing rule for this database (see <code>[[pdi-portals-readonly-db]]</code>); a proper census needs to be chunked the same way the procedure itself chunks by outcode. All queries read-only via <code>pdi_prospect_readonly</code>.
+    Methodology: figures in §1 and the 17.3%/4.5%/35.9% group-scope numbers are exact, from full-table aggregate queries against <code>PDI_PortalsData.pdi_agent_master</code> (63,617 rows — cheap to scan in full). The 49,364/30,490 RM-vs-ZL branch counts in §1 are exact independent counts direct from <code>property_details</code>/<code>property_details_zoopla</code> (grouped on the indexed <code>agent_name, agent_address</code> pair), not from the master table. The confidence-tier split in §2 and the bucket chart in §4 are extrapolated from capped, per-branch shared-listing-evidence queries against a random sample (33 duplicate-group branches, 40 clean branches) — the full evidence-count computation across all 23,282 matched branches in one query timed out against the production read-only cap and was abandoned rather than pushed harder, per the standing rule for this database (see <code>[[pdi-portals-readonly-db]]</code>); a proper census needs to be chunked the same way the procedure itself chunks by outcode. The §6 impact check is a literal-string repo grep for <code>agent_master_id</code> across every repo this account can reach (<code>PDI_AgentIntelligence</code>, <code>PropertyDataDBAPIs</code>, <code>PDI4Institutions</code>, <code>PDI_InsightJavaRepo2025</code>, <code>PDICommercialProspects</code>, <code>PDI_ZooplaAdapter</code>) — a real but not exhaustive check; it can't see code this account doesn't have access to. All queries read-only via <code>pdi_prospect_readonly</code>.
   </div>
 
 </div>

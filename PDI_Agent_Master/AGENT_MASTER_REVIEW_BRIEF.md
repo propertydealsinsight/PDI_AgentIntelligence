@@ -48,6 +48,45 @@ built from. Today this is survivable because the performance job re-runs weekly
 undocumented**. Review options: stable ids (match rows to previous snapshot and
 carry ids forward), or a durable business key.
 
+**Direction agreed with the user (2026-07-13, echoing what they'd already told
+Moiz):** `id` should become a permanent master key — assigned once, never
+reassigned on rebuild — plus an active/inactive status column so a
+decommissioned agent (no longer trading) gets flagged rather than silently
+dropped or having its id reissued. Whether this replaces the current `id`
+column or sits alongside it is still open, pending impact.
+
+**Impact check (2026-07-13):** grepped every repo this account can reach
+(`PDI_AgentIntelligence`, `PropertyDataDBAPIs`, `PDI4Institutions`,
+`PDI_InsightJavaRepo2025`, `PDICommercialProspects`, `PDI_ZooplaAdapter`) for
+the literal string `agent_master_id`. It appears in exactly one place outside
+`PDI_PortalsData` itself: `PDI_Agent_Performance`, where it's written into the
+performance table purely as a traceability column (`agent.id` copied in at
+upsert time, `app/sql/queries.py` `UPSERT_PERFORMANCE_QUERY_TEMPLATE`). It is
+**not** used as a join key anywhere — `FETCH_AGENTS_QUERY` selects `p.id` only
+to iterate the current snapshot within a single run; every real lookup (the
+performance table's own unique key, and the ranking API's joins in
+`PropertyDataDBAPIs/routers/Agent/agentPerformance.py`) goes through
+`(agent_name, agent_address)`, ZL-first. Nothing in MarketIntelligenceFeed or
+the RM/ZL merge procedures references the column at all. Consequence: the
+stored `agent_master_id` in the performance table *already* changes every
+week under the current unstable scheme, so nothing today treats it as
+durable — making it durable is a **low-impact, additive change** (stabilise
+the existing `id` column + add the active/inactive flag), not a downstream
+migration. Caveat: this is a repo-wide grep, not exhaustive — worth a final
+check closer to implementation for anything outside these repos (ad-hoc
+scripts, saved reports).
+
+**Separately, on the RM-only/ZL-only single-portal split (63,617-row
+composition, §1 of the companion HTML report):** this is *not* itself a
+defect. Measured independently of the master table: Rightmove carries 49,364
+distinct `(agent_name, agent_address)` pairs in `property_details` vs.
+Zoopla's 30,490 in `property_details_zoopla` — Rightmove genuinely has ~62%
+more branch coverage, so RM-only rows outnumbering ZL-only rows is expected
+portal-coverage skew, not a matching failure. The genuine gap the
+active/inactive idea points at is real but distinct from D7: the master has
+no concept of "this agent stopped trading," for single-portal and matched
+rows alike.
+
 ### D2. Loop-1 copy-paste bug (confirmed in source)
 In loop 1, `temp_rm_property_signatures` builds its "already matched" exclusion
 by joining **RM listings against the master's ZL columns**:
@@ -181,15 +220,17 @@ different Rightmove "Foxtons" rows, two of which are clearly wrong branches —
   new matches, drops). A rebuild that half-fails is invisible (this exact
   scenario is why the performance job now has a pre-swap gate — consider the
   same validate-then-swap pattern here).
-- The procedure source lives only in the database — no repo copy. First step of
-  the review: `SHOW CREATE PROCEDURE PDI_PortalsData.p_generate_agent_master;`
-  and commit the export into this folder as the baseline.
+- ~~The procedure source lives only in the database — no repo copy.~~ **Done
+  2026-07-13**: `procedure/p_generate_agent_master.sql` committed as baseline
+  (commit `b750563`), D2 fixed in a separate commit (`1f04fb1`) — not yet
+  deployed to production.
 
 ## 3. Suggested review outputs
 
-1. Repo baseline: current procedure source + `pdi_agent_master` DDL (with
-   indexes) committed here.
-2. Decisions on: stable ids (D1), canonical name+address (D4), duplicate policy
+1. ~~Repo baseline: current procedure source~~ **done** (see D6 above);
+   `pdi_agent_master` DDL with indexes still to commit.
+2. Decisions on: stable ids (D1 — **direction agreed, impact checked low-risk,
+   implementation still open**), canonical name+address (D4), duplicate policy
    (D3), minimum-evidence threshold + address-correspondence rule (D7).
 3. Fix list, in priority order: **D7's threshold + address check (root cause
    of most duplicates), D2 (quick win, one-line join fix), then D1/D3/D4**.

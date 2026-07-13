@@ -1,5 +1,6 @@
+DROP PROCEDURE IF EXISTS PDI_PortalsData.p_generate_agent_master;
 DELIMITER $$
-CREATE DEFINER=`admin`@`%` PROCEDURE `p_generate_agent_master`()
+CREATE DEFINER=`admin`@`%` PROCEDURE `PDI_PortalsData`.`p_generate_agent_master`()
 BEGIN
 	DECLARE done INT DEFAULT FALSE;
     DECLARE var_outcode VARCHAR(10);
@@ -84,9 +85,9 @@ BEGIN
         END IF;
         
         -- Create optimized agent summary tables with proper column types
-        DROP TABLE IF EXISTS temp_rm_agents_summary;
+        DROP TABLE IF EXISTS PDI_PortalsData.temp_rm_agents_summary;
 		SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_rm_agents_summary AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_rm_agents_summary AS
 			SELECT 
 				p.agent_name,
 				p.agent_address,
@@ -105,9 +106,9 @@ BEGIN
 		EXECUTE stmt;
 		DEALLOCATE PREPARE stmt;
         
-        DROP TABLE IF EXISTS temp_zl_agents_summary;
+        DROP TABLE IF EXISTS PDI_PortalsData.temp_zl_agents_summary;
 		SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_zl_agents_summary AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_zl_agents_summary AS
 			SELECT 
 				p.agent_name,
 				p.agent_address,
@@ -127,17 +128,17 @@ BEGIN
 		DEALLOCATE PREPARE stmt;
         
 		-- Add indexes for better performance
-		ALTER TABLE temp_rm_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
-		ALTER TABLE temp_rm_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
-		ALTER TABLE temp_rm_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
-		ALTER TABLE temp_zl_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
-		ALTER TABLE temp_zl_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
-		ALTER TABLE temp_zl_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
 
 		-- Step 3: Create separate property signature tables for RM and ZL (avoids MySQL temp table reopen limitation)
-		DROP TABLE IF EXISTS temp_rm_property_signatures;
+		DROP TABLE IF EXISTS PDI_PortalsData.temp_rm_property_signatures;
         SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_rm_property_signatures AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_rm_property_signatures AS
 			SELECT 
 				CONCAT(p.postcode, \'|\', p.price, \'|\', p.num_bedrooms, \'|\', 
 					   IF(p.listing_status = \'new-homes\', \'sale\', p.listing_status)) as property_signature,
@@ -153,9 +154,9 @@ BEGIN
 		EXECUTE stmt;
 		DEALLOCATE PREPARE stmt;
 
-		DROP TABLE IF EXISTS temp_zl_property_signatures;
+		DROP TABLE IF EXISTS PDI_PortalsData.temp_zl_property_signatures;
         SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_zl_property_signatures AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_zl_property_signatures AS
 			SELECT
 				CONCAT(p.postcode, \'|\', p.price, \'|\', p.num_bedrooms, \'|\',
 					   IF(p.listing_status = \'new-homes\', \'sale\', p.listing_status)) as property_signature,
@@ -171,23 +172,23 @@ BEGIN
 		EXECUTE stmt;
 		DEALLOCATE PREPARE stmt;
 
-		ALTER TABLE temp_rm_property_signatures ADD INDEX idx_signature (property_signature);
-		ALTER TABLE temp_rm_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
-		ALTER TABLE temp_zl_property_signatures ADD INDEX idx_signature (property_signature);
-		ALTER TABLE temp_zl_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
+		ALTER TABLE PDI_PortalsData.temp_rm_property_signatures ADD INDEX idx_signature (property_signature);
+		ALTER TABLE PDI_PortalsData.temp_rm_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
+		ALTER TABLE PDI_PortalsData.temp_zl_property_signatures ADD INDEX idx_signature (property_signature);
+		ALTER TABLE PDI_PortalsData.temp_zl_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
 
 
 		-- Step 4: Find agent matches via property signatures (much faster than large joins)
-		DROP TABLE IF EXISTS temp_agent_matches;
-		CREATE TEMPORARY TABLE temp_agent_matches AS
+		DROP TABLE IF EXISTS PDI_PortalsData.temp_agent_matches;
+		CREATE TEMPORARY TABLE PDI_PortalsData.temp_agent_matches AS
 		SELECT DISTINCT
 			rm_sigs.agent_name as rm_agent_name,
 			rm_sigs.agent_address as rm_agent_address,
 			zl_sigs.agent_name as zl_agent_name,
 			zl_sigs.agent_address as zl_agent_address,
 			COUNT(*) as matching_properties
-		FROM temp_rm_property_signatures rm_sigs
-		INNER JOIN temp_zl_property_signatures zl_sigs ON rm_sigs.property_signature = zl_sigs.property_signature
+		FROM PDI_PortalsData.temp_rm_property_signatures rm_sigs
+		INNER JOIN PDI_PortalsData.temp_zl_property_signatures zl_sigs ON rm_sigs.property_signature = zl_sigs.property_signature
 		GROUP BY rm_sigs.agent_name, rm_sigs.agent_address, zl_sigs.agent_name, zl_sigs.agent_address
 		HAVING matching_properties >= 1;
 
@@ -203,9 +204,9 @@ BEGIN
 				zl.agent_address as address_zl,
 				COALESCE(zl.agent_logo, rm.agent_logo) as agent_logo,
 				''SAME_AGENT_NAME'' as matching_algo
-			FROM temp_rm_agents_summary rm
-			INNER JOIN temp_zl_agents_summary zl ON PDI_PortalsData.are_strings_similar(rm.normalized_agent_name, zl.normalized_agent_name)
-			INNER JOIN temp_agent_matches am ON (
+			FROM PDI_PortalsData.temp_rm_agents_summary rm
+			INNER JOIN PDI_PortalsData.temp_zl_agents_summary zl ON PDI_PortalsData.are_strings_similar(rm.normalized_agent_name, zl.normalized_agent_name)
+			INNER JOIN PDI_PortalsData.temp_agent_matches am ON (
 				am.rm_agent_name = rm.agent_name 
 				AND am.rm_agent_address = rm.agent_address
 				AND am.zl_agent_name = zl.agent_name 
@@ -228,9 +229,9 @@ BEGIN
 				zl.agent_address as address_zl,
 				COALESCE(zl.agent_logo, rm.agent_logo) as agent_logo,
 				''NORMALISED_AGENT_NAME_REMOVED_SPACE'' as matching_algo
-			FROM temp_rm_agents_summary rm
-			INNER JOIN temp_zl_agents_summary zl ON PDI_PortalsData.are_strings_similar(rm.clean_agent_name, zl.clean_agent_name)
-			INNER JOIN temp_agent_matches am ON (
+			FROM PDI_PortalsData.temp_rm_agents_summary rm
+			INNER JOIN PDI_PortalsData.temp_zl_agents_summary zl ON PDI_PortalsData.are_strings_similar(rm.clean_agent_name, zl.clean_agent_name)
+			INNER JOIN PDI_PortalsData.temp_agent_matches am ON (
 				am.rm_agent_name = rm.agent_name 
 				AND am.rm_agent_address = rm.agent_address
 				AND am.zl_agent_name = zl.agent_name 
@@ -272,9 +273,9 @@ BEGIN
         END IF;
         
         -- Create optimized agent summary tables with proper column types
-        DROP TABLE IF EXISTS temp_rm_agents_summary;
+        DROP TABLE IF EXISTS PDI_PortalsData.temp_rm_agents_summary;
 		SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_rm_agents_summary AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_rm_agents_summary AS
 			SELECT 
 				p.agent_name,
 				p.agent_address,
@@ -293,9 +294,9 @@ BEGIN
 		EXECUTE stmt;
 		DEALLOCATE PREPARE stmt;
         
-        DROP TABLE IF EXISTS temp_zl_agents_summary;
+        DROP TABLE IF EXISTS PDI_PortalsData.temp_zl_agents_summary;
 		SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_zl_agents_summary AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_zl_agents_summary AS
 			SELECT 
 				p.agent_name,
 				p.agent_address,
@@ -315,17 +316,17 @@ BEGIN
 		DEALLOCATE PREPARE stmt;
         
 		-- Add indexes for better performance
-		ALTER TABLE temp_rm_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
-		ALTER TABLE temp_rm_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
-		ALTER TABLE temp_rm_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
-		ALTER TABLE temp_zl_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
-		ALTER TABLE temp_zl_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
-		ALTER TABLE temp_zl_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
 
 		-- Step 3: Create separate property signature tables for RM and ZL (avoids MySQL temp table reopen limitation)
-		DROP TABLE IF EXISTS temp_rm_property_signatures;
+		DROP TABLE IF EXISTS PDI_PortalsData.temp_rm_property_signatures;
         SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_rm_property_signatures AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_rm_property_signatures AS
 			SELECT 
 				CONCAT(p.postcode, \'|\', p.price, \'|\', p.num_bedrooms, \'|\', 
 					   IF(p.listing_status = \'new-homes\', \'sale\', p.listing_status)) as property_signature,
@@ -341,9 +342,9 @@ BEGIN
 		EXECUTE stmt;
 		DEALLOCATE PREPARE stmt;
         
-		DROP TABLE IF EXISTS temp_zl_property_signatures;
+		DROP TABLE IF EXISTS PDI_PortalsData.temp_zl_property_signatures;
         SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_zl_property_signatures AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_zl_property_signatures AS
 			SELECT 
 				CONCAT(p.postcode, \'|\', p.price, \'|\', p.num_bedrooms, \'|\', 
 					   IF(p.listing_status = \'new-homes\', \'sale\', p.listing_status)) as property_signature,
@@ -359,10 +360,10 @@ BEGIN
 		EXECUTE stmt;
 		DEALLOCATE PREPARE stmt;
         
-		ALTER TABLE temp_rm_property_signatures ADD INDEX idx_signature (property_signature);
-		ALTER TABLE temp_rm_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
-		ALTER TABLE temp_zl_property_signatures ADD INDEX idx_signature (property_signature);
-		ALTER TABLE temp_zl_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
+		ALTER TABLE PDI_PortalsData.temp_rm_property_signatures ADD INDEX idx_signature (property_signature);
+		ALTER TABLE PDI_PortalsData.temp_rm_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
+		ALTER TABLE PDI_PortalsData.temp_zl_property_signatures ADD INDEX idx_signature (property_signature);
+		ALTER TABLE PDI_PortalsData.temp_zl_property_signatures ADD INDEX idx_agent (agent_name, agent_address);
         
         -- Strategy 3 - Full Address matches (probable matches)
 		INSERT INTO PDI_PortalsData.pdi_agent_master_probable_match
@@ -375,18 +376,18 @@ BEGIN
 			zl_sigs.agent_address as address_zl,
 			COALESCE(zl_sum.agent_logo, rm_sum.agent_logo) as agent_logo,
 			'SAME_FULL_ADDRESS' as matching_algo
-		FROM temp_rm_property_signatures rm_sigs
-		INNER JOIN temp_zl_property_signatures zl_sigs ON (
+		FROM PDI_PortalsData.temp_rm_property_signatures rm_sigs
+		INNER JOIN PDI_PortalsData.temp_zl_property_signatures zl_sigs ON (
 			rm_sigs.property_signature = zl_sigs.property_signature
 			AND rm_sigs.full_property_address IS NOT NULL
 			AND zl_sigs.full_property_address IS NOT NULL
 			AND PDI_PortalsData.are_strings_similar(rm_sigs.full_property_address, zl_sigs.full_property_address)
 		)
-		LEFT JOIN temp_rm_agents_summary rm_sum ON (
+		LEFT JOIN PDI_PortalsData.temp_rm_agents_summary rm_sum ON (
 			rm_sum.agent_name = rm_sigs.agent_name 
 			AND rm_sum.agent_address = rm_sigs.agent_address
 		)
-		LEFT JOIN temp_zl_agents_summary zl_sum ON (
+		LEFT JOIN PDI_PortalsData.temp_zl_agents_summary zl_sum ON (
 			zl_sum.agent_name = zl_sigs.agent_name 
 			AND zl_sum.agent_address = zl_sigs.agent_address
 		)
@@ -423,9 +424,9 @@ BEGIN
         END IF;
         
         -- Create optimized agent summary tables with proper column types
-        DROP TABLE IF EXISTS temp_rm_agents_summary;
+        DROP TABLE IF EXISTS PDI_PortalsData.temp_rm_agents_summary;
 		SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_rm_agents_summary AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_rm_agents_summary AS
 			SELECT 
 				p.agent_name,
 				p.agent_address,
@@ -444,9 +445,9 @@ BEGIN
 		EXECUTE stmt;
 		DEALLOCATE PREPARE stmt;
         
-        DROP TABLE IF EXISTS temp_zl_agents_summary;
+        DROP TABLE IF EXISTS PDI_PortalsData.temp_zl_agents_summary;
 		SET @sql = CONCAT('
-			CREATE TEMPORARY TABLE temp_zl_agents_summary AS
+			CREATE TEMPORARY TABLE PDI_PortalsData.temp_zl_agents_summary AS
 			SELECT 
 				p.agent_name,
 				p.agent_address,
@@ -466,12 +467,12 @@ BEGIN
 		DEALLOCATE PREPARE stmt;
         
 		-- Add indexes for better performance
-		ALTER TABLE temp_rm_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
-		ALTER TABLE temp_rm_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
-		ALTER TABLE temp_rm_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
-		ALTER TABLE temp_zl_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
-		ALTER TABLE temp_zl_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
-		ALTER TABLE temp_zl_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_rm_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD PRIMARY KEY (agent_name(100), agent_address(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD INDEX idx_normalized (normalized_agent_name(100));
+		ALTER TABLE PDI_PortalsData.temp_zl_agents_summary ADD INDEX idx_clean (clean_agent_name(100));
 
         -- Add remaining unmatched agents
 		SET @sql = CONCAT('
@@ -485,7 +486,7 @@ BEGIN
 				NULL as address_zl,
 				agent_logo,
 				NULL as matching_algo
-			FROM temp_rm_agents_summary rm
+			FROM PDI_PortalsData.temp_rm_agents_summary rm
 			WHERE NOT EXISTS (
 				SELECT 1 FROM ', tmp_pdi_agent_master_name, ' existing
 				WHERE existing.agent_name_rm = rm.agent_name 
@@ -500,7 +501,7 @@ BEGIN
 				agent_address as address_zl,
 				agent_logo,
 				NULL as matching_algo
-			FROM temp_zl_agents_summary zl
+			FROM PDI_PortalsData.temp_zl_agents_summary zl
 			WHERE NOT EXISTS (
 				SELECT 1 FROM ', tmp_pdi_agent_master_name, ' existing
 				WHERE existing.agent_name_zl = zl.agent_name 

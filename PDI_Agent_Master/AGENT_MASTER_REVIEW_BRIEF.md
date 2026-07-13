@@ -9,6 +9,36 @@ the numbers are measured from production, not guessed. Status: review
 (D7, 2026-07-13) with a real example and diagnostic queries; root cause and
 scope confirmed against production, see D7.
 
+**Rollout status (2026-07-13):**
+- **Phase 1 — running in production.** User confirmed 2026-07-13 13:31:
+  a run has produced `PDI_PortalsData.pdi_agent_master_13072026113200`
+  (23,775 rows). **Open question, asked back to the user:** is this the
+  corrected main procedure with the live rename-swap enabled (in which case
+  `pdi_agent_master` itself is/will be this data), or the renamed test copy
+  (`.../procedure/p_generate_agent_master copy.sql`, swap deliberately
+  commented out, seeds only `MANUAL`) — and has the run fully finished all
+  three loops? Phase 2 depends on the answer (see below), don't guess it.
+- **Phase 2 — scripts ready in `PDI_Agent_Master/retrofit/`, sequencing:
+  AFTER Phase 1 completes and its output is what's live in
+  `pdi_agent_master` — not in parallel.** Reason: step 1's "flagged
+  duplicate groups" list and step 3's writes are both computed *from*
+  `pdi_agent_master` — running them while Phase 1 is still inserting rows
+  (or before Phase 1's corrected data has been swapped in) means Phase 2
+  would spend its multi-hour evidence run deduplicating data that's about to
+  be replaced, and risks reading a half-written table mid-swap. Nothing
+  written yet.
+- **Phase 3 — needs design + validation before any code change:** D7's
+  evidence threshold + address-correspondence rule itself (items 1–2 of the
+  plan below). Not started.
+- **Phase 4 (id scheme) — explicitly deferred by the user (2026-07-13):**
+  keep the current auto-increment `id` column exactly as it works today for
+  now. When implemented, the new `AGT-######` code is added as an
+  **additional column alongside the existing id**, not a replacement — it
+  only becomes the primary key later, once matching has stabilised (low
+  churn, Phases 2–3 bedded in). Schema is written
+  (`PDI_Agent_Master/id_scheme/01_registry_schema.sql`) and safe to sit
+  unused, but do not wire it into the procedure yet.
+
 ---
 
 ## 1. What the procedure does today (baseline understanding)
@@ -76,6 +106,70 @@ migration. Caveat: this is a repo-wide grep, not exhaustive — worth a final
 check closer to implementation for anything outside these repos (ad-hoc
 scripts, saved reports).
 
+**Format decided with the user (2026-07-13): a prefixed permanent sequence**,
+e.g. `AGT-000123` — not a bare re-assignable int, not a content hash, not a
+UUID. Reasoning: human-readable and sortable for anyone debugging in
+Workbench, and (unlike a hash) doesn't silently mint a "new" identity if an
+agent's name/address text is re-normalised slightly later.
+
+**The real problem is the mechanism, not the format.** `pdi_agent_master`'s
+identity is a *cross-portal match*, and match quality is expected to keep
+improving (that's what D7 is) — an RM-only branch today may correctly gain a
+ZL counterpart next month; a branch wrongly paired today (D7) may get
+correctly re-paired later. A permanent id can't be pinned to "the match"
+itself, because the match is allowed to change. It has to be pinned to each
+**portal-side branch** (an RM listing-office identity and a ZL listing-office
+identity, each independently stable on its own), with the master row's id
+following whichever side already had one — and a policy for what happens when
+two separately-coded single-portal branches turn out to be the same real
+branch once matched (a **merge**). This is a standard MDM ("golden record")
+problem, not unique to this schema.
+
+**Explicitly deferred by the user (2026-07-13): do not implement yet.** Keep
+the current auto-increment `id` exactly as it works today. When this does
+get built, the `AGT-######` code is added as an **additional column
+alongside the existing id, not a replacement** — it only becomes the primary
+identifier later, once matching (Phases 2–3) has bedded in and churn is low.
+Minting permanent ids while the matching logic underneath is still being
+corrected would lock in identities for entities that are about to be
+re-merged/re-split anyway. The plan below is written down so it isn't
+re-derived from scratch whenever this is picked back up, not as a to-do for
+right now.
+
+**Implementation plan (Phase 4, paused — see above):**
+1. **Schema only, safe to ship today** (`PDI_Agent_Master/id_scheme/01_registry_schema.sql`,
+   written 2026-07-13, not yet run): a permanent registry
+   (`agent_master_identity_registry`, keyed on the RM side and the ZL side of
+   each branch independently, `UNIQUE` on each), a single-row sequence counter
+   table, and an alias table (`agent_master_code_aliases`) recording
+   retired→canonical code mappings when a merge happens. Creating these tables
+   changes no existing behaviour — nothing reads from them yet.
+2. Rewrite the rebuild's seeding step to **resolve-or-mint** against the
+   registry instead of inserting without ids: for every branch (RM side, ZL
+   side) the matching loops produce, look up the registry by that side's
+   `(agent_name, agent_address)`; reuse its code if found, mint the next
+   `AGT-######` if not.
+3. **Merge handling**: when a matching run pairs two branches that already
+   each carry their own code (one from an old RM-only registry entry, one
+   from an old ZL-only entry), keep the *older* code as canonical on the
+   master row and write the newer one into `agent_master_code_aliases` — so
+   anything that cached the retired code before the merge (a saved report, a
+   support ticket) can still resolve it.
+4. Active/inactive: set `is_active = 0` on a registry row once neither side
+   has had a listing in N months (proposed N=6 — needs a decision, not a
+   guess; check the distribution the way every other threshold in this brief
+   was checked before picking N).
+5. **Real downstream change this time (small, but real — the earlier "no
+   impact" finding was about join *logic*, not the column *type*):** the id's
+   physical type changes from `int` to `varchar(20)`. Agent Performance's
+   `agent_master_id` column needs the matching `ALTER TABLE` — mechanical, one
+   migration, but coordinate the timing so it isn't silently truncating/
+   mismatching mid-cutover.
+6. Validate before cutover the same way the D7 retrofit is being validated:
+   dry-run the resolve-or-mint logic against a snapshot, diff against the
+   current table's row-for-row identity, confirm every currently-matched
+   branch resolves to a sensible code before flipping the live procedure over.
+
 **Separately, on the RM-only/ZL-only single-portal split (63,617-row
 composition, §1 of the companion HTML report):** this is *not* itself a
 defect. Measured independently of the master table: Rightmove carries 49,364
@@ -87,14 +181,31 @@ active/inactive idea points at is real but distinct from D7: the master has
 no concept of "this agent stopped trading," for single-portal and matched
 rows alike.
 
-### D2. Loop-1 copy-paste bug (confirmed in source)
+### D2. Loop-1 copy-paste bug (confirmed in source) — fixed
 In loop 1, `temp_rm_property_signatures` builds its "already matched" exclusion
 by joining **RM listings against the master's ZL columns**:
 `ON p.agent_name = ptmp.agent_name_zl AND p.agent_address = ptmp.address_zl
 WHERE ptmp.agent_name_rm IS NULL` — wrong columns (loop 2 does it correctly
 with `agent_name_rm`/`address_rm`). Effect: already-matched RM branches are not
 excluded from loop-1 signature matching — wasted work and edge-case duplicate
-matches.
+matches. **Fixed in commit `1f04fb1`.**
+
+**Also fixed (2026-07-13, user's own catch): unqualified temp tables.** Every
+internal `CREATE TEMPORARY TABLE` / `DROP TABLE` / `ALTER TABLE` for
+`temp_rm_agents_summary`, `temp_zl_agents_summary`,
+`temp_rm_property_signatures`, `temp_zl_property_signatures`, and
+`temp_agent_matches` was unqualified, so they were created under whatever
+schema happened to be the caller's default at `CALL` time, not necessarily
+`PDI_PortalsData` — user reported this exact symptom ("keeps getting created
+in wrong schema"). All now qualified with `PDI_PortalsData.`, matching the
+established convention in [[feedback_always_qualify_procedure_schema]]. Also
+added `DROP PROCEDURE IF EXISTS PDI_PortalsData.p_generate_agent_master;` and
+schema-qualified the `CREATE PROCEDURE` line itself, so the file can be
+redeployed cleanly (MySQL has no `CREATE OR REPLACE PROCEDURE`). Commit
+`4ad64d0`. **None of this is deployed to production yet** — three commits
+now sit in the repo (`b750563` baseline, `1f04fb1` D2 fix, `4ad64d0` schema
+qualification) waiting on a `DROP PROCEDURE` + `CREATE PROCEDURE` run against
+`PDI_PortalsData` before the next scheduled rebuild picks them up.
 
 ### D3. Duplicate master rows for the same branch (measured)
 - 63,516 master rows → only **59,068 distinct** `(COALESCE(name_zl, name_rm),
@@ -192,6 +303,27 @@ different Rightmove "Foxtons" rows, two of which are clearly wrong branches —
    `address_rm`/`address_zl`, or address-string similarity — so brand-name
    match alone can never carry a pair. This is literally what the developer
    flagged: "we are not matching agent branch address."
+   - **Now confirmed viable with real data (2026-07-13):** Rightmove's own
+     `agent_address` field used to be far less detailed (per the user, who
+     watched this happen) — confirmed on the Foxtons example: the vague `Foxtons,
+     WD25` label's last listing is dated 2025-03-05, and the two properly detailed
+     addresses (`75 Waterhouse Street, Hemel Hempstead, HP1 1ED` and `Block B,
+     Wilmington Close, Watford, WD18 0FQ`) both start 2025-03-10 — a clean format
+     cutover, not a gradual drift. Checked 4 more generic-looking RM addresses
+     from the duplicate-group list (`Barnard Marcus, Streatham/Tooting`, `Acorn,
+     London Bridge`, `Hose Rhodes Dickson, Newport`): 3 of 4 haven't listed
+     anything since 2023–2024 — stale/dead branch labels, not just vague ones (one
+     counter-example, bare `Morden`, is still live despite the generic format, so
+     recency and address-detail are correlated but not the same signal — combine
+     both, don't substitute one for the other).
+   - **User's explicit steer:** use RM branch name+address matching as an
+     **additional weighted lens layered on top of the property-signature
+     evidence, never as a sole source of truth** — the fuzzy-matching
+     infrastructure for this already exists (`PDI_PortalsData.are_strings_similar()`
+     is already used for name similarity in Strategies 1–2 and for
+     `full_property_address` in Strategy 3); extending it to compare
+     `agent_address_rm` vs `agent_address_zl` directly is a natural fit, not new
+     infrastructure.
 3. When a branch has multiple candidate matches on the other portal, **keep
    only the best one** (highest shared-property-count / address-similarity),
    not all candidates that clear the threshold independently — today's loop
@@ -200,12 +332,22 @@ different Rightmove "Foxtons" rows, two of which are clearly wrong branches —
    query across the 3,262+967 flagged groups, keep the strongest pair per
    branch, demote/delete the rest (or route to
    `pdi_agent_master_probable_match` for human review rather than silently
-   dropping).
+   dropping). **Scripts written 2026-07-13** in `PDI_Agent_Master/retrofit/`:
+   `01_compute_dedupe_evidence.sql` (resumable, batched evidence
+   materialisation — a single all-rows query timed out, so this computes
+   shared-listing counts one branch at a time), `02_dry_run_preview.sql`
+   (read-only — classifies every flagged row as safe-to-demote, a genuine
+   conflict needing human review, or keep-as-is), `03_apply_dedupe.sql`
+   (backs up `pdi_agent_master` first, then only acts on the safe-to-demote
+   rows inside a transaction — conflicting rows are deliberately left alone).
+   **Not yet run against production** — needs a write-capable account (not the
+   readonly one used for this whole review) and the full evidence backlog is
+   a multi-hour batch job, so run it off-peak; see the scripts' own comments.
 5. Commit the developer's two diagnostic queries (shared-property-count per
    `agent_master_id`; postcode-scoped validation) into this repo as reusable
    validation tools — they're the right building blocks for both the one-off
    cleanup and an ongoing pre-swap gate (see review output #4 below), not just
-   one-off review aids.
+   one-off review aids. **Done** — see `PDI_Agent_Master/queries/`.
 
 ### D6. Smaller review items
 - `INSERT IGNORE` semantics depend on whatever unique keys `pdi_agent_master`

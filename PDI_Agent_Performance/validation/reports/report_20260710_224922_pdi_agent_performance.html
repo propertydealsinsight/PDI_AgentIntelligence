@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Agent Performance Validation 2026-07-10</title>
+<style>
+  body   { font-family:Arial,sans-serif; font-size:14px; margin:20px; color:#333 }
+  h2,h3  { color:#37474f }
+  table  { border-collapse:collapse; width:100% }
+  th,td  { border:1px solid #ccc; padding:6px 10px; vertical-align:top }
+  th     { background:#37474f; color:#fff; text-align:left }
+  pre    { background:#f5f5f5; padding:12px; font-size:12px; overflow-x:auto }
+  .sum   { border:none; width:auto; margin-bottom:16px }
+  .sum td { border:none }
+</style>
+</head><body>
+<h2>PDI Agent Performance Validation — 2026-07-10</h2>
+<p><b>New table:</b> PDI_PortalsData.pdi_agent_performance &nbsp;|&nbsp;
+   <b>Sample:</b> 6 agents (seed=20260710) &nbsp;|&nbsp;
+   <b>Total:</b> 6</p>
+<table class="sum"><tr><td style="color:#2e7d32;font-weight:bold;padding:4px 12px">GREEN: 4</td><td style="color:#e65100;font-weight:bold;padding:4px 12px">AMBER: 1</td><td style="color:#b71c1c;font-weight:bold;padding:4px 12px">RED: 1</td><td style="color:#555;font-weight:bold;padding:4px 12px">SKIPPED: 0</td></tr></table>
+
+<h3>Section B — Per-agent RAG (NEW table vs independent recompute)</h3>
+<p style="font-size:0.85em">
+Sold S/R = stored vs recompute &nbsp;|&nbsp;
+Diff% S/R = stored vs recompute (recompute = MEDIAN) &nbsp;|&nbsp;
+Coverage = usable PPD price-points / mature sold (24mo)
+</p>
+<table>
+<tr>
+  <th>Agent</th><th>Area</th><th>Band</th><th>RAG</th>
+  <th>Sold S/R</th><th>Diff% S/R</th><th>Coverage</th><th>Notes</th>
+</tr>
+<tr style="background:#e8f5e9"><td>Barratt Homes - Century Gardens</td><td style="text-align:center">PO</td><td style="text-align:center">small</td><td style="color:#2e7d32;font-weight:bold;text-align:center">GREEN</td><td style="text-align:center">0 / 0</td><td style="text-align:center">— / —</td><td style="text-align:center">0/0</td><td style="font-size:0.85em">ok</td></tr>
+<tr style="background:#e8f5e9"><td>Madison Fox</td><td style="text-align:center">E</td><td style="text-align:center">medium</td><td style="color:#2e7d32;font-weight:bold;text-align:center">GREEN</td><td style="text-align:center">31 / 29</td><td style="text-align:center">-1.82 / -1.82</td><td style="text-align:center">24/67</td><td style="font-size:0.85em">ok excl=1</td></tr>
+<tr style="background:#e8f5e9"><td>Dourish & Day Estate Agent</td><td style="text-align:center">SY</td><td style="text-align:center">medium</td><td style="color:#2e7d32;font-weight:bold;text-align:center">GREEN</td><td style="text-align:center">76 / 87</td><td style="text-align:center">-2.03 / -3.51</td><td style="text-align:center">39/129</td><td style="font-size:0.85em">ok excl=1</td></tr>
+<tr style="background:#e8f5e9"><td>Connells</td><td style="text-align:center">ME</td><td style="text-align:center">medium</td><td style="color:#2e7d32;font-weight:bold;text-align:center">GREEN</td><td style="text-align:center">38 / 37</td><td style="text-align:center">-1.94 / -2.13</td><td style="text-align:center">35/76</td><td style="font-size:0.85em">ok excl=2</td></tr>
+<tr style="background:#fff3e0"><td>Iconic</td><td style="text-align:center">NR</td><td style="text-align:center">large</td><td style="color:#e65100;font-weight:bold;text-align:center">AMBER</td><td style="text-align:center">132 / 173</td><td style="text-align:center">-1.70 / -1.85</td><td style="text-align:center">206/469</td><td style="font-size:0.85em">sold delta=41 (≥26) excl=1</td></tr>
+<tr style="background:#ffebee"><td>Robert Ellis - Stapleford</td><td style="text-align:center">NG</td><td style="text-align:center">mega</td><td style="color:#b71c1c;font-weight:bold;text-align:center">RED</td><td style="text-align:center">505 / 243</td><td style="text-align:center">-2.53 / -1.84</td><td style="text-align:center">226/562</td><td style="font-size:0.85em">sold delta=262 (≥73) excl=13</td></tr>
+
+</table>
+
+<h3>Section A — Table health &amp; cross-table divergence</h3>
+<pre>SECTION A — table health &amp; week-over-week drift
+============================================================
+
+TARGET  (validating): 23,155 rows
+  diff%  min=-99.39  max=9999.99  mean=-1.48  null=7,863
+  CLAMP  at -99.99=0  at +99.99=16  &lt;- CLAMPING
+  turnaround mean=68  null=6,219
+  live+sold+withdrawn ≤ total violations=0
+  avg sold_mature=92.0  avg with_price=33.0  coverage=35.8%
+
+BASELINE (previous run): 25,785 rows
+  diff%  min=-99.39  max=9999.99  mean=-1.66  null=8,044
+  CLAMP  at -99.99=0  at +99.99=17  &lt;- CLAMPING
+  turnaround mean=68  null=6,395
+  live+sold+withdrawn ≤ total violations=0
+  avg sold_mature=97.5  avg with_price=35.1  coverage=36.0%
+
+DRIFT vs previous run (agents in both, n=15,183):
+  sold count differs for 2,936 agents (19%),  avg abs gap 1.6
+  turnaround avg abs gap 0.8 days
+  diff% avg abs gap 0.05 pp
+  (large jumps week-over-week = investigate before trusting the refresh)</pre>
+
+<p style="font-size:0.8em;color:#999">
+Two-window logic: activity counts on 365d window;
+realised price metric on 24mo window.
+Baseline = listed_price (original asking); recovered from price when
+listed_price is null/placeholder (≤£1,000).
+Outlier exclusion: MAD fence median ± 3.5 × 1.4826 × MAD.
+</p>
+</body></html>

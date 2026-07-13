@@ -526,11 +526,11 @@ def section_a(cur, target_table: str, baseline_table: str) -> list[str]:
                    MIN(avg_difference_in_percentage) mn,
                    MAX(avg_difference_in_percentage) mx,
                    ROUND(AVG(avg_difference_in_percentage), 2) mean_diff,
-                   SUM(avg_difference_in_percentage IS NULL) null_diff,
-                   SUM(avg_difference_in_percentage <= -99.99) at_neg_floor,
-                   SUM(avg_difference_in_percentage >=  99.99) at_pos_floor,
+                   IFNULL(SUM(avg_difference_in_percentage IS NULL), 0) null_diff,
+                   IFNULL(SUM(avg_difference_in_percentage <= -99.99), 0) at_neg_floor,
+                   IFNULL(SUM(avg_difference_in_percentage >=  99.99), 0) at_pos_floor,
                    ROUND(AVG(turnaround_days)) mean_ta,
-                   SUM(turnaround_days IS NULL) null_ta
+                   IFNULL(SUM(turnaround_days IS NULL), 0) null_ta
             FROM {t}
         """))
         r = cur.fetchone()
@@ -547,11 +547,11 @@ def section_a(cur, target_table: str, baseline_table: str) -> list[str]:
         if has_extra:
             try:
                 cur.execute(cap(f"""
-                    SELECT SUM(no_of_listings IS NULL) null_total,
-                           SUM(COALESCE(no_of_live_listings,0)
+                    SELECT IFNULL(SUM(no_of_listings IS NULL), 0) null_total,
+                           IFNULL(SUM(COALESCE(no_of_live_listings,0)
                                + COALESCE(no_of_sold_listings,0)
                                + COALESCE(no_of_withdrawn_listing,0)
-                               > COALESCE(no_of_listings,0)) invariant_violations,
+                               > COALESCE(no_of_listings,0)), 0) invariant_violations,
                            ROUND(AVG(no_of_sold_mature),1) avg_sold_mature,
                            ROUND(AVG(no_of_sold_with_soldprice),1) avg_with_price,
                            ROUND(100*SUM(no_of_sold_with_soldprice)
@@ -590,15 +590,21 @@ def section_a(cur, target_table: str, baseline_table: str) -> list[str]:
               ON p.agent_name=n.agent_name AND p.agent_address=n.agent_address
         """))
         r = cur.fetchone()
-        pct = (r["sold_differs"] / r["matched"] * 100) if r["matched"] else 0
-        lines.append(f"\nDRIFT vs previous run (agents in both, n={r['matched']:,}):")
-        lines.append(
-            f"  sold count differs for {r['sold_differs']:,} agents ({pct:.0f}%),  "
-            f"avg abs gap {r['avg_abs_sold_gap']}"
-        )
-        lines.append(f"  turnaround avg abs gap {r['avg_abs_ta_gap']} days")
-        lines.append(f"  diff% avg abs gap {r['avg_abs_diff_gap']} pp")
-        lines.append("  (large jumps week-over-week = investigate before trusting the refresh)")
+        if not r["matched"]:
+            lines.append(
+                f"\nDRIFT vs previous run: no shared agents between the two tables "
+                f"(baseline empty or disjoint) — drift comparison skipped"
+            )
+        else:
+            pct = r["sold_differs"] / r["matched"] * 100
+            lines.append(f"\nDRIFT vs previous run (agents in both, n={r['matched']:,}):")
+            lines.append(
+                f"  sold count differs for {r['sold_differs']:,} agents ({pct:.0f}%),  "
+                f"avg abs gap {r['avg_abs_sold_gap']}"
+            )
+            lines.append(f"  turnaround avg abs gap {r['avg_abs_ta_gap']} days")
+            lines.append(f"  diff% avg abs gap {r['avg_abs_diff_gap']} pp")
+            lines.append("  (large jumps week-over-week = investigate before trusting the refresh)")
     return lines
 
 
@@ -928,7 +934,9 @@ def main() -> int:
         _ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
         _tbl_slug = (args.table or "").split(".")[-1][:60]
         _fname    = f"report_{_ts}_{_tbl_slug}.html" if _tbl_slug else f"report_{_ts}.html"
-        html_path = pathlib.Path(__file__).parent / _fname
+        _reports_dir = pathlib.Path(__file__).parent / "reports"
+        _reports_dir.mkdir(exist_ok=True)
+        html_path = _reports_dir / _fname
 
         html = build_html(
             a_lines, b_results, tally,

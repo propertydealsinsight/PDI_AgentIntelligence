@@ -18,7 +18,7 @@ MAIN_PERFORMANCE_TABLE = "pdi_agent_performance"
 # When True, atomically swap staging table into main on a successful full run:
 #   pdi_agent_performance      -> pdi_agent_performance_bkp   (previous bkp is DROPPED)
 #   pdi_agent_performance_<ts> -> pdi_agent_performance
-ATOMIC_REPLACE_MAIN_TABLE = False
+ATOMIC_REPLACE_MAIN_TABLE = True
 
 # Validation harness overrides — LEAVE EMPTY for normal operation.
 # Defaults are automatic: target = live pdi_agent_performance,

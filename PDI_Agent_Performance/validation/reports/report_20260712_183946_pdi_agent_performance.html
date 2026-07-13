@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>Agent Performance Validation 2026-07-12</title>
+<style>
+  body   { font-family:Arial,sans-serif; font-size:14px; margin:20px; color:#333 }
+  h2,h3  { color:#37474f }
+  table  { border-collapse:collapse; width:100% }
+  th,td  { border:1px solid #ccc; padding:6px 10px; vertical-align:top }
+  th     { background:#37474f; color:#fff; text-align:left }
+  pre    { background:#f5f5f5; padding:12px; font-size:12px; overflow-x:auto }
+  .sum   { border:none; width:auto; margin-bottom:16px }
+  .sum td { border:none }
+</style>
+</head><body>
+<h2>PDI Agent Performance Validation — 2026-07-12</h2>
+<p><b>New table:</b> PDI_PortalsData.pdi_agent_performance &nbsp;|&nbsp;
+   <b>Sample:</b> 3 agents (seed=20260712) &nbsp;|&nbsp;
+   <b>Total:</b> 4</p>
+<table class="sum"><tr><td style="color:#2e7d32;font-weight:bold;padding:4px 12px">GREEN: 2</td><td style="color:#e65100;font-weight:bold;padding:4px 12px">AMBER: 0</td><td style="color:#b71c1c;font-weight:bold;padding:4px 12px">RED: 1</td><td style="color:#555;font-weight:bold;padding:4px 12px">SKIPPED: 1</td></tr></table>
+
+<h3>Section B — Per-agent RAG (NEW table vs independent recompute)</h3>
+<p style="font-size:0.85em">
+Sold S/R = stored vs recompute &nbsp;|&nbsp;
+Diff% S/R = stored vs recompute (recompute = MEDIAN) &nbsp;|&nbsp;
+Coverage = usable PPD price-points / mature sold (24mo)
+</p>
+<table>
+<tr>
+  <th>Agent</th><th>Area</th><th>Band</th><th>RAG</th>
+  <th>Sold S/R</th><th>Diff% S/R</th><th>Coverage</th><th>Notes</th>
+</tr>
+<tr style="background:#f5f5f5"><td>Space Homes</td><td style="text-align:center"></td><td style="text-align:center"></td><td style="color:#000;font-weight:bold;text-align:center">SKIPPED</td><td style="text-align:center">— / None</td><td style="text-align:center">— / —</td><td style="text-align:center"></td><td style="font-size:0.85em">no raw listings matched</td></tr>
+<tr style="background:#e8f5e9"><td>Connells - Plymstock</td><td style="text-align:center">PL</td><td style="text-align:center">medium</td><td style="color:#2e7d32;font-weight:bold;text-align:center">GREEN</td><td style="text-align:center">35 / 36</td><td style="text-align:center">-3.33 / -3.33</td><td style="text-align:center">28/76</td><td style="font-size:0.85em">ok excl=2</td></tr>
+<tr style="background:#e8f5e9"><td>The Stow Brothers</td><td style="text-align:center">E</td><td style="text-align:center">large</td><td style="color:#2e7d32;font-weight:bold;text-align:center">GREEN</td><td style="text-align:center">253 / 242</td><td style="text-align:center">1.63 / 1.52</td><td style="text-align:center">178/480</td><td style="font-size:0.85em">ok</td></tr>
+<tr style="background:#ffebee"><td>Flexi Agent</td><td style="text-align:center">PR</td><td style="text-align:center">mega</td><td style="color:#b71c1c;font-weight:bold;text-align:center">RED</td><td style="text-align:center">664 / 489</td><td style="text-align:center">-1.50 / -1.52</td><td style="text-align:center">365/985</td><td style="font-size:0.85em">sold delta=175 (≥147) excl=25</td></tr>
+
+</table>
+
+<h3>Section A — Table health &amp; cross-table divergence</h3>
+<pre>SECTION A — table health &amp; week-over-week drift
+============================================================
+
+[baseline PDI_PortalsData.pdi_agent_performance_proc_v2 not accessible — drift comparison skipped]
+
+TARGET  (validating): 23,155 rows
+  diff%  min=-99.39  max=9999.99  mean=-1.48  null=7,863
+  CLAMP  at -99.99=0  at +99.99=16  &lt;- CLAMPING
+  turnaround mean=68  null=6,219
+  live+sold+withdrawn ≤ total violations=0
+  avg sold_mature=92.0  avg with_price=33.0  coverage=35.8%</pre>
+
+<p style="font-size:0.8em;color:#999">
+Two-window logic: activity counts on 365d window;
+realised price metric on 24mo window.
+Baseline = listed_price (original asking); recovered from price when
+listed_price is null/placeholder (≤£1,000).
+Outlier exclusion: MAD fence median ± 3.5 × 1.4826 × MAD.
+</p>
+</body></html>

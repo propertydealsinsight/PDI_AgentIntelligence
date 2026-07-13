@@ -358,10 +358,12 @@ def run_preswap_validation(
         r"GREEN=(\d+)\s+AMBER=(\d+)\s+RED=(\d+)\s+SKIPPED=(\d+)", res.stdout or ""
     )
     if not m:
-        tail = (res.stdout or res.stderr or "")[-500:]
+        tail = (
+            f"stdout: {(res.stdout or '')[-300:]!r} | stderr: {(res.stderr or '')[-600:]!r}"
+        )
         return False, (
             f"pre-swap validation produced no tally (exit {res.returncode}) — "
-            f"fail closed. Output tail: {tail!r}"
+            f"fail closed. {tail}"
         )
     green, amber, red, skipped = map(int, m.groups())
     summary = (
@@ -520,7 +522,8 @@ def main() -> int:
                     and job_report.summary.failed == 0
                     and atomic_replace
                 ):
-                    if is_full_run(args):
+                    # if is_full_run(args):
+                    if True: # Test Only - was is_full_run(args):
                         gate_ok, gate_failures = run_preswap_gate(
                             db, config.DATABASE, staging_table, main_table
                         )

@@ -145,7 +145,7 @@ BEGIN
 				p.agent_address,
 				p.full_property_address
 			FROM PDI_PortalsData.property_details p LEFT JOIN
-			',tmp_pdi_agent_master_name,' ptmp ON p.agent_name = ptmp.agent_name_zl AND p.agent_address = ptmp.address_zl
+			',tmp_pdi_agent_master_name,' ptmp ON p.agent_name = ptmp.agent_name_rm AND p.agent_address = ptmp.address_rm
 			WHERE p.outcode = \'',var_outcode,'\'
 			AND ptmp.agent_name_rm IS NULL
 		');

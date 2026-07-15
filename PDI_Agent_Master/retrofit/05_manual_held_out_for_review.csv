@@ -1,0 +1,118 @@
+id,matching_algo,proposed_action,agent_name_rm,address_rm,agent_name_zl,address_zl,shared_property_count
+7,MANUAL,null_zl_side,Paul Dubberley & Co,"290 High Street, West Bromwich, B70 8EN",Paul Dubberley Estate Agents - West Bromwich,"Victoria House, 290-292 High Street, West Bromwich",64
+10,MANUAL,null_zl_side,Paul Dubberley & Co,"73 Great Bridge, Great Bridge, Tipton, DY4 7HF",Paul Dubberley Estate Agents - Great Bridge,"73 Great Bridge, Tipton",74
+15,MANUAL,null_zl_side,Paul Dubberley & Co,"Paul Dubberley & Co, Great Bridge",Paul Dubberley Estate Agents - Great Bridge,"73 Great Bridge, Tipton",2
+16,MANUAL,null_zl_side,Paul Dubberley & Co,"Paul Dubberley & Co, West Bromwich",Paul Dubberley Estate Agents - West Bromwich,"Victoria House, 290-292 High Street, West Bromwich",0
+24,MANUAL,null_zl_side,Paul Dubberley & Co Lettings,"Paul Dubberley & Co Lettings, West Bromwich",Paul Dubberley Estate Agents - West Bromwich,"Victoria House, 290-292 High Street, West Bromwich",0
+29,MANUAL,null_zl_side,Bower House Bath Ltd,"Bower House Bath Ltd, Bath",Bowerhouse,"4 Bladud Buildings, Bath, BATH",1
+45,MANUAL,null_zl_side,Zhang property investment service UK limited,Bournemouth,Zhang Property Investment Services Ltd,"109 Carbery Avenue, Bournemouth",6
+48,MANUAL,null_zl_side,St Quintin Estate Agents,"14 Victoria Road, Ferndown, BH22 9HZ",STQ Property Group,"14 Victoria Road, Ferndown",15
+50,MANUAL,null_zl_side,Lovett Estate & Lettings Agents,"Lovett Estate & Lettings Agents, Poole",Lovett Estate & Letting Agents â Poole,"241 Ashley Road, Poole",2
+52,MANUAL,null_zl_side,Burkmars Estate Agents,"Burkmars Estate Agents, Lymington",Burkmar Estate Agents,"35A High Street, Lymington",76
+62,MANUAL,null_zl_side,Glyn-Jones & Co,"Glyn-Jones & Co, Rustington",Glyn Jones - Rustington,"94 The Street, Rustington, Littlehampton",2
+64,MANUAL,null_zl_side,Glyn-Jones & Co,"Glyn-Jones & Co, Rustington Covering West Sussex",Glyn Jones - Rustington,"94 The Street, Rustington, Littlehampton",0
+65,MANUAL,null_zl_side,Glyn-Jones & Co,"Glyn-Jones & Co, Yapton",Glyn Jones - Yapton,"Brow Cottage, Main Road, Yapton",43
+67,MANUAL,null_zl_side,Stone Estate Agency,"23 Croydon Road, Reigate, RH2 0LY",Stone Reigate Limited,"23 Croydon Road, Reigate,",4
+74,MANUAL,null_zl_side,Kenton,"Kenton, Orpington",Kentons,"316 High Street, Orpington",31
+77,MANUAL,null_zl_side,Purpleproperty,"Purpleproperty, Gillingham",Purple Property,"428 Canterbury Street, Gillingham",127
+82,MANUAL,null_zl_side,Matthewsestates.co.uk,"Matthewsestates.co.uk, Knowle",Matthews Estates.com,"298 Wells Road, Knowle",90
+83,MANUAL,null_zl_side,Matthewsandco.uk,"Matthewsandco.uk, Knowle",Matthews Estates.com,"298 Wells Road, Knowle",24
+84,MANUAL,null_zl_side,Matthewsandco.uk,"298 Wells Road, Bristol, BS4 2QG",Matthews Estates.com,"298 Wells Road, Knowle",4
+85,MANUAL,null_zl_side,Woods Letting Agents,"Woods Letting Agents, Portishead",Woods Estate Agents - Portishead Lettings,"The Piazza, Harbour Road, Portishead",2
+88,MANUAL,null_zl_side,Woods Letting Agents,"Woods Letting Agents, Clevedon",Woods Estate Agents - Clevedon,"41 Hill Road, Clevedon",2
+101,MANUAL,null_zl_side,Savills Country Houses,"Savills Country Houses, London",Savills - Country House Lettings,"33 Margaret Street, London",0
+103,MANUAL,null_zl_side,WellingtonWise,"WellingtonWise, Royston",Wellington Wise - Royston,"11 Baldock Street, Royston",72
+125,MANUAL,null_zl_side,Bellway Homes (Essex),"Woodside Way, Great Dunmow, Essex, CM64DD",Bellway - Sapphire Fields,"Woodside Way, Great Dunmow",1
+135,MANUAL,null_zl_side,ludlowthompson,"ludlowthompson, Tooting - Sales",Ludlow Thompson - Tooting,"62 Tooting High Street, London",14
+139,MANUAL,null_zl_side,ludlowthompson,"ludlowthompson, Tooting - Lettings",Ludlow Thompson - Tooting,"62 Tooting High Street, London",23
+155,MANUAL,null_zl_side,Heenay Joshi Property Expert,"Heenay Joshi Property Expert, Coventry",Heenay Joshi Property Experts,"1st Floor Cashs Business Park, Coventry",8
+161,MANUAL,null_zl_side,R A Bennett & Partners,"R A Bennett & Partners, Warwick",RA Bennett & Partners - Warwick,"1 Jury Street, Warwick",0
+164,MANUAL,null_zl_side,R A Bennett & Partners,"R A Bennett & Partners, Stratford Upon Avon",RA Bennett & Partners - Stratford-Upon-Avon Lettings,"46 Sheep Street, Stratford-Upon-Avon",1
+179,MANUAL,null_zl_side,Barratt Homes - North Scotland,"Mains Loan, Dundee, Dundee & Angus, DD4 7DF",Barratt Homes - Keiller's Rise,"Mains Loan, Dundee",11
+194,MANUAL,null_zl_side,ZEBRAlets,"ZEBRAlets, Mansfield",Zebra Sales & Lettings,"65 West Gate, Mansfield, Nottinghamshire",12
+218,MANUAL,null_zl_side,BMH,"BMH, Cleethorpes","Bettles, Miles & Holland","15 Seaview Street, Cleethorpes",0
+228,MANUAL,null_zl_side,ludlowthompson,"3 - 5 Dock Street, London, E1 8JN",Ludlow Thompson - City / Docklands,"3 - 5 Dock Street, London",143
+232,MANUAL,null_zl_side,YOUR MOVE Glenwood Lettings,"35 High Road, Chadwell Heath, Romford, RM6 6QJ",Your Move - Chadwell Heath,"35 High Road, Chadwell Heath, Romford",82
+234,MANUAL,null_zl_side,Found Property London,"Found Property London, London",Found Property LDN,"20-22 Wenlock Road, London",10
+235,MANUAL,null_zl_side,YOUR MOVE Glenwood Lettings,"YOUR MOVE Glenwood Lettings, Chadwell Heath",Your Move - Chadwell Heath,"35 High Road, Chadwell Heath, Romford",2
+241,MANUAL,null_zl_side,Drummond Miller,"Drummond Miller, Edinburgh",DM Property,"20 Union Street, Glenorchy House, Edinburgh",1
+247,MANUAL,null_zl_side,Caesar & Howie,"107 Almondvale, Livingston, EH54 6QT",Caesar Howie - Livingston,"107 Almondvale Centre, Livingston",72
+248,MANUAL,null_zl_side,StayAltido,"StayAltido, London",Altido,"26 Astwood Mews, London",1
+268,MANUAL,null_zl_side,Star Investment Properties,"Star Investment Properties, Exeter",Star Lettings & Property Management,"6 Northernhay Place, Exeter",2
+269,MANUAL,null_zl_side,Halo Homes Scotland,"Halo Homes Scotland, Bonnybridge",Halo-Homes,"6A Main Street, Bonnybridge, Stirling",4
+276,MANUAL,null_zl_side,Alexr. McAllister & McKechnie,"6 Moss Street, Paisley, PA1 1BL",Alexander McAllister & McKechnie,"6 Moss Street, Paisley",33
+294,MANUAL,null_zl_side,R A Bennett & Partners,"R A Bennett & Partners, Cheltenham",RA Bennett & Partners - Cheltenham Lettings,"7-9 Bath Road, Cheltenham",2
+295,MANUAL,null_zl_side,Scottfraser,"38 Market Square, Witney, OX28 6AL",Scott Fraser - Witney,"38 Market Square, Witney",145
+298,MANUAL,null_zl_side,Gascoigne-Pees,"Gascoigne-Pees, Guildford",Gascoigne Pees - Guildford Sales,"193 High Street, Guildford",2
+301,MANUAL,null_zl_side,Prospect Estate Agency,"Prospect Estate Agency, Aldershot",Prospect - Aldershot,"175 Victoria Road, Aldershot",1
+307,MANUAL,null_zl_side,Prospect Estate Agency,"Prospect Estate Agency, Covering Camberley",Prospect Camberley,"2 Southwell Park Road, Camberley",0
+309,MANUAL,null_zl_side,Prospect Estate Agency,"Prospect Estate Agency, Sandhurst",Prospect - Sandhurst,"38 Yorktown Road, Sandhurst",0
+318,MANUAL,null_zl_side,Newboulds & Co,"Newboulds & Co, Shepperton",Newbould & Co,"4 Station Approach, Shepperton",85
+320,MANUAL,null_zl_side,Gascoigne-Pees Lettings,"Gascoigne-Pees Lettings, Godalming",Gascoigne Pees - Godalming Lettings,"85 High Street, Godalming",0
+330,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Beaconsfield",Frost Partnership - Beaconsfield,"1 Burkes Parade, Beaconsfield",0
+336,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Chesham",Frost Partnership - Chesham,"1 Germain Street, Chesham",1
+337,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Amersham",Frost Partnership - Amersham,"59-61 Hill Avenue, Amersham",2
+338,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Chalfont St Giles",Frost Partnership - Chalfont St Giles,"10 High Street, Chalfont St Giles",0
+339,MANUAL,null_zl_side,The Frost Partnership,"2 Clarence Road, Windsor, SL4 5AD",Frost Partnership - Windsor,"2 Clarence Road, Windsor",171
+373,MANUAL,null_zl_side,Gascoigne-Pees,"Gascoigne-Pees, Leatherhead",Gascoigne Pees - Leatherhead Sales,"London House, 29 Church Street Leatherhead, Surrey",6
+374,MANUAL,null_zl_side,Gascoigne-Pees,"Gascoigne-Pees, Worcester Park",Gascoigne Pees - Worcester Park Sales,"167 Central Road, Worcester Park",1
+375,MANUAL,null_zl_side,Gascoigne-Pees Lettings,"Gascoigne-Pees Lettings, Kingston Upon Thames",Gascoigne Pees - Kingston Lettings,"60-62 Old London Road, Kingston upon Thames",2
+376,MANUAL,null_zl_side,Gascoigne-Pees,"Gascoigne-Pees, Chessington",Gascoigne Pees - Chessington Sales,"9 North Parade, Chessington",0
+386,MANUAL,null_zl_side,Alpha-Move Ltd,"Alpha-Move Ltd, Liverpool",Alpha Let Ltd,"3 Childwall Parade, Pilch Lane, Huyton, Liverpool",6
+390,MANUAL,null_zl_side,Alpha-Move Ltd,Alpha-Move 3 Childwall Parade Pilch Lane Liverpool L14 6TT,Alpha Let Ltd,"3 Childwall Parade, Pilch Lane, Huyton, Liverpool",38
+392,MANUAL,null_zl_side,JD Estate Agents,"JD Estate Agents, Liverpool",J&D Estates Agents,"188-190 Walton Village, Walton, Liverpool",1
+394,MANUAL,null_zl_side,JD Estates,"JD Estates, Liverpool",J&D Estates Agents,"188-190 Walton Village, Walton, Liverpool",8
+395,MANUAL,null_zl_side,Clee Tompkinson & Francis,"Clee Tompkinson & Francis, Brecon",Clee Tompkinson Francis - Brecon,"13 Lion Street, Brecon",0
+408,MANUAL,null_zl_side,Spencers Estate Agency,"Spencers Estate Agency, Blaby",Spencers Countrywide - Blaby,"23 Leicester Road, Blaby, Leicester",1
+412,MANUAL,null_zl_side,Spencers Estate Agency,"Spencers Estate Agency, Birstall",Spencers Countrywide - Birstall,"109 Sibson Road, Birstall",0
+413,MANUAL,null_zl_side,Spencers Estate Agency,"Spencers Estate Agency, Syston",Spencers Countrywide - Syston,"1239 Melton Road, Syston",0
+420,MANUAL,null_zl_side,Hunters-Turner Evans Stevens,"Hunters-Turner Evans Stevens, Louth","Hunters - Turner Evans Stevens, Louth","6-8 Cornmarket, Louth",21
+422,MANUAL,null_zl_side,Hunters-Turner Evans Stevens,"Hunters-Turner Evans Stevens, Sutton on Sea","Hunters - Turner Evans Stevens, Sutton on Sea","2 Evergreen Walk, Sutton-on-Sea, Mablethorpe",24
+423,MANUAL,null_zl_side,Hunters-Turner Evans Stevens,34-36 High Street Spilsby PE23 5JH,"Hunters - Turner Evans Stevens, Spilsby","34-36 High Street, Spilsby",25
+424,MANUAL,null_zl_side,Bradley Estates Lincoln,Lincoln,BRADLEY ESTATES LINCS LIMITED,"17A High Street, Lincoln",5
+432,MANUAL,null_zl_side,EasyHomes,"EasyHomes, Manchester",Easy Homes (MCR),"985 Stockport Road, Manchester",37
+484,MANUAL,null_zl_side,Boughtons Family Run Estate Agents,"Boughtons Family Run Estate Agents, Brackley",Boughtons Estate Agent LTD,"44 Market Place, Brackley",0
+505,MANUAL,null_zl_side,Scottfraser,"205a Banbury Road, Oxford, OX2 7HQ",Scott Fraser - Summertown,"205a Banbury Road, Summertown, Oxford",97
+507,MANUAL,null_zl_side,Scottfraser,"267 Cowley Road, Cowley, Oxford, OX4 1XQ",Scott Fraser - East Oxford,"267 Cowley Road, East Oxford, Oxfordshire",169
+513,MANUAL,null_zl_side,Scottfraser,"Scottfraser, East Oxford",Scott Fraser - East Oxford,"267 Cowley Road, East Oxford, Oxfordshire",0
+536,MANUAL,null_zl_side,Leaders Waterside Properties Lettings,"Leaders Waterside Properties Lettings, Gunwharf Quays",Leaders - Gunwharf Quays,"95 The Canalside, Gunwharf Quays, Portsmouth",0
+545,MANUAL,null_zl_side,The Frost Partnership,146/148 High Street Staines TW18 4AH,Frost Partnership - Staines,"146-148 High Street, Staines",163
+561,MANUAL,null_zl_side,Gascoigne-Pees,"Gascoigne-Pees, Tadley",Gascoigne Pees - Tadley,"20 Mulfords Hill, Tadley",0
+565,MANUAL,null_zl_side,Village Properties,"Village Properties, Twyford",VP Estate Agents,"Flagstaff House, 12 High Street, Twyford, Reading",4
+566,MANUAL,null_zl_side,Prospect Estate Agency,"Prospect Estate Agency, Warfield",Prospect - Warfield,"11 County Lane, Warfield",0
+569,MANUAL,null_zl_side,Gascoigne-Pees,"Gascoigne-Pees, Redhill",Gascoigne Pees - Redhill Sales,"41 High Street, Redhill",0
+572,MANUAL,null_zl_side,Zoom995 ltd,"Zoom995 ltd, National",Zoom Estate Agents,"4 Brittingham House, Orchard Street, Crawley",1
+574,MANUAL,null_zl_side,Gascoigne-Pees,"Gascoigne-Pees, Horsham",Gascoigne Pees - Horsham Sales,"26a The Carfax, Horsham",0
+575,MANUAL,null_zl_side,YOUR MOVE Stewart & Co,"YOUR MOVE Stewart & Co, Hornchurch",Your Move - Hornchurch,"209 Station Lane, Hornchurch",2
+579,MANUAL,null_zl_side,PEAKSTONE ESTATE LTD,"PEAKSTONE ESTATE LTD, Sheffield",Peakstones,"502 Fulwood Road, Sheffield",12
+600,MANUAL,null_zl_side,Clee Tompkinson & Francis,"Clee Tompkinson & Francis, Port Talbot",Clee Tompkinson Francis - Port Talbot,"40A Station Road, Port Talbot",2
+608,MANUAL,null_zl_side,JJ Morris,"JJ Morris, Haverfordwest",J J Morris - Haverfordwest,"4 Picton Place, Haverfordwest",0
+609,MANUAL,null_zl_side,JJ Morris,"JJ Morris, Narberth",J J Morris - Narberth,"Hill House, High Street, Narberth",0
+610,MANUAL,null_zl_side,Clee Tompkinson & Francis,"Clee Tompkinson & Francis, Pontardawe",Clee Tompkinson Francis - Pontardawe,"The Old Factory, 1a Tawe Terrace, Pontardawe",1
+611,MANUAL,null_zl_side,Clee Tompkinson & Francis,"Clee Tompkinson & Francis, Ystradgynlais",Clee Tompkinson Francis - Ystradgynlais,"22 Heol Eglwys, Ystradgynlais, Swansea",0
+616,MANUAL,null_zl_side,Lets Property Management,"Unit 1, First Floor High Oak Business Centre Gentlemens Field Ware SG12 0EF",Lets Property Management,"Unit 1  First Floor, High Oak Business Centre,  Gentlemens Fields, Ware",11
+627,MANUAL,null_zl_side,S John Homes,"S John Homes, Colnbrook",S J Homes,"1 High Street, Colnbrook",38
+631,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Windsor",Frost Partnership - Windsor,"2 Clarence Road, Windsor",1
+632,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Wraysbury",Frost Partnership - Wraysbury,"33 High Street, Wraysbury",1
+637,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Burnham",Frost Partnership - Burnham,"73 High Street, Burnham",0
+644,MANUAL,null_zl_side,McFarlane Sales & Lettings,"McFarlane Sales & Lettings, Marlborough",Mcfarlane's Sales & Lettings - Marlborough,"106 High Street, Marlborough",1
+663,MANUAL,null_zl_side,Jim Raw Rees & Co,"Jim Raw Rees & Co, Aberystwyth",Jim Raw-Rees,"1 Chalybeate Steet, Aberystwyth",0
+664,MANUAL,null_zl_side,Peter Richardson Estates,"Peter Richardson Estates, Telford",Peter Richardsons,"10 - 12  Hills Lane Drive, Madeley, Telford",0
+671,MANUAL,null_zl_side,KHP Country Homes,"KHP Country Homes, Paddock Wood",Country Homes - Paddock Wood,"6 Commercial Road, Paddock Wood",0
+674,MANUAL,null_zl_side,KLP,"KLP, Exeter",Kitchener Land and Planning,"Newcourt Barton, Clyst Road, Topsham, Exeter",0
+685,MANUAL,null_zl_side,Priory Management,"Priory Management, Richmond - Sales",Priory LM,"16 Kew Green, Richmond",2
+686,MANUAL,null_zl_side,Woodlands,"Woodlands, Isleworth",Woodland,"16 St. Johns Road, Isleworth",23
+691,MANUAL,null_zl_side,The Frost Partnership,"The Frost Partnership, Staines",Frost Partnership - Staines,"146-148 High Street, Staines",0
+693,MANUAL,null_zl_side,Gibbs Gillespie together with Thorgills,"Gibbs Gillespie together with Thorgills, Brentford",Gibbs Gillespie - Brentford,"44 High Street, Brentford, London",0
+705,MANUAL,null_zl_side,Paul Dubberley & Co,"Paul Dubberley & Co, Wednesbury",Paul Dubberley Estate Agents - Wednesbury,"97 Walsall Street, Wednesbury",1
+707,MANUAL,null_zl_side,Paul Dubberley & Co,"Paul Dubberley & Co, Willenhall",Paul Dubberley Estate Agents - Willenhall,"14 New Road, Willenhall",0
+709,MANUAL,null_zl_side,Paul Dubberley & Co Lettings,"Paul Dubberley & Co Lettings, Bilston",Paul Dubberley Estate Agents - Bilston,"69 Church Street, Bilston",0
+710,MANUAL,null_zl_side,Paul Dubberley & Co,"Paul Dubberley & Co, Bilston",Paul Dubberley Estate Agents - Bilston,"69 Church Street, Bilston",1
+715,MANUAL,null_zl_side,City Lets,"City Lets, York",CityLets York,"8 Fossbridge House, Walmgate, York",1
+28,MANUAL,null_rm_side,Bower House Bath Ltd,4 Bladud Buildings Bath BA1 5LS,Bowerhouse,"4 Bladud Buildings, Bath",5
+70,MANUAL,null_rm_side,Zoom995 ltd,National,Zoom Estate Agents,"3 Magellan Terrace Ground Floor,  Gatwick Road, Crawley",140
+138,MANUAL,null_rm_side,Rentals And Sales,"Rentals And Sales, Wimbledon",RentalsandSales.Com,"4 Queens Road, Wimbledon",12
+208,MANUAL,null_rm_side,A J P Property Services,"A J P Property Services, Gateshead",AJP Property Services (NE) Ltd,"29 - 30 Saltmeadows Road, Gateshead",3
+459,MANUAL,null_rm_side,Avant Homes Midlands,"Hartness Road, Clifton, Nottingham, NG11 8SS",Avant Homes - Foxgrove Village,"Hartness Road, Nottingham",3
+465,MANUAL,null_rm_side,Avant Homes Central,"Newtons Lane, Awsworth, Nottingham, NG16 2SJ",Avant Homes - Bennerley View,"Newtons Lane, Awsworth",17
+696,MANUAL,null_rm_side,Relo Redac Strattons,"114 Finchley Road, London, NW3 5HT",Redac Strattons - Notting Hill Gate Office,"c/o 114 Finchley Road, London",10

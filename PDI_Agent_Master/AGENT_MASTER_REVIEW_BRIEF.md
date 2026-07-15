@@ -29,10 +29,21 @@ scope confirmed against production, see D7.
   604 null-rm), 1,600 genuine conflicts left alone (e.g. a row that loses one
   direction but is competing for a plausibly-correct match in the other),
   1,886 pending (hit the per-query time cap, mostly large chains — rerun
-  needed). Generated, reviewed, not yet run:
-  `PDI_Agent_Master/retrofit/04_generated_fixes_staging_13072026113200.sql`
-  — targets only the staging table, backs it up first. Needs a write-capable
-  account to execute (analysis was done entirely read-only).
+  needed).
+  **User's call (2026-07-13): don't auto-override a prior human decision.**
+  Of the 2,595, 117 currently carry `matching_algo = 'MANUAL'` — a human
+  had already confirmed these; the automated evidence heuristic doesn't get
+  to silently override that. Split into:
+  `retrofit/05_manual_held_out_for_review.csv` (the 117, untouched by any
+  script, for a human to look at separately — some have evidence as low as
+  0-2 shared listings despite being manually confirmed, e.g. the "Paul
+  Dubberley & Co" branches, worth a second look) and
+  `retrofit/04b_generated_fixes_staging_13072026113200_excl_manual.sql`
+  (the remaining 2,478 — 2,458 `SAME_AGENT_NAME` + 20 `NORMALISED_*` —
+  reviewed, not yet run). The original `04_generated_fixes_...sql` (all
+  2,595, including MANUAL) is superseded by `04b` for actual execution.
+  Targets only the staging table; needs a write-capable account (analysis
+  was done entirely read-only).
 - **Phase 3 — needs design + validation before any code change:** D7's
   evidence threshold + address-correspondence rule itself (items 1–2 of the
   plan below). Not started.

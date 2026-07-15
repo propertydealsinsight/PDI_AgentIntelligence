@@ -10,23 +10,29 @@ the numbers are measured from production, not guessed. Status: review
 scope confirmed against production, see D7.
 
 **Rollout status (2026-07-13):**
-- **Phase 1 — running in production.** User confirmed 2026-07-13 13:31:
-  a run has produced `PDI_PortalsData.pdi_agent_master_13072026113200`
-  (23,775 rows). **Open question, asked back to the user:** is this the
-  corrected main procedure with the live rename-swap enabled (in which case
-  `pdi_agent_master` itself is/will be this data), or the renamed test copy
-  (`.../procedure/p_generate_agent_master copy.sql`, swap deliberately
-  commented out, seeds only `MANUAL`) — and has the run fully finished all
-  three loops? Phase 2 depends on the answer (see below), don't guess it.
-- **Phase 2 — scripts ready in `PDI_Agent_Master/retrofit/`, sequencing:
-  AFTER Phase 1 completes and its output is what's live in
-  `pdi_agent_master` — not in parallel.** Reason: step 1's "flagged
-  duplicate groups" list and step 3's writes are both computed *from*
-  `pdi_agent_master` — running them while Phase 1 is still inserting rows
-  (or before Phase 1's corrected data has been swapped in) means Phase 2
-  would spend its multi-hour evidence run deduplicating data that's about to
-  be replaced, and risks reading a half-written table mid-swap. Nothing
-  written yet.
+- **Phase 1 — ran to completion, produced a staging table, NOT swapped into
+  live.** `PDI_PortalsData.pdi_agent_master_13072026113200` (64,074 rows
+  final). Swap-gate check against live (2026-07-13): total rows and
+  composition look sane (no NULL `agent_master_name`, `MANUAL` preserved
+  exactly at 716), but the D7 symptom this whole review is about is **not
+  fixed and got measurably worse on one metric** — RM branches matched to
+  >1 ZL address roughly doubled (967/21,639 = 4.5% live → 1,942/20,763 =
+  9.4% staging), because the run re-evaluated far more branches through
+  Strategy 1/2's still-unfixed logic than an incremental run would.
+  **Recommendation given and accepted: do not swap this table into live.**
+  User's decision instead: use this staging table as the base to apply the
+  known Phase 2 fix on top of, rather than re-running Phase 1 again.
+- **Phase 2 — redirected at the staging table, not live.** Evidence computed
+  for all 9,522 flagged
+  rows in `pdi_agent_master_13072026113200` (8-way parallel, ~73 min):
+  2,595 rows classified as safe, evidence-backed demotions (1,991 null-zl +
+  604 null-rm), 1,600 genuine conflicts left alone (e.g. a row that loses one
+  direction but is competing for a plausibly-correct match in the other),
+  1,886 pending (hit the per-query time cap, mostly large chains — rerun
+  needed). Generated, reviewed, not yet run:
+  `PDI_Agent_Master/retrofit/04_generated_fixes_staging_13072026113200.sql`
+  — targets only the staging table, backs it up first. Needs a write-capable
+  account to execute (analysis was done entirely read-only).
 - **Phase 3 — needs design + validation before any code change:** D7's
   evidence threshold + address-correspondence rule itself (items 1–2 of the
   plan below). Not started.

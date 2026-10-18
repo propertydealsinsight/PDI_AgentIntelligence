@@ -125,5 +125,30 @@ class ProgressiveTest(unittest.TestCase):
         self.assertEqual(flat[0], "SE18")   # most listings first
 
 
+class TwinUprnTest(unittest.TestCase):
+    def _l(self, portal, lid, addr, uprn, days=0, price=500000):
+        return listing_from_row(portal, {"listing_id": lid, "agent_name": "Acme", "agent_address": "1 High St",
+                                         "full_property_address": addr, "postcode": "SE10 8AA", "uprn": uprn,
+                                         "listing_status": "sale", "status": "for_sale", "price": price,
+                                         "first_published_date": NOW - dt.timedelta(days=30 + days)})
+
+    def test_a_rightmove_listing_takes_its_zoopla_twins_uprn(self):
+        rm = self._l("rightmove", "1", "72 The Coach House, Hardy Road, London SE10 8AA", None)
+        zl = self._l("zoopla", "2", "The Coach House, 72 Hardy Road, London SE10 8AA", "100020972960", days=3)
+        self.assertEqual(engine.adopt_twin_uprns([rm, zl]), 1)
+        self.assertEqual(rm.uprn, "100020972960")
+
+    def test_no_twin_when_price_date_or_portal_differ_or_ambiguous(self):
+        rm = self._l("rightmove", "1", "Flat 1, X", None)
+        far = self._l("zoopla", "2", "Flat 1, X", "11", days=40)
+        other_price = self._l("zoopla", "3", "Flat 1, X", "12", price=510000)
+        same_portal = self._l("rightmove", "4", "Flat 1, X", "13")
+        self.assertEqual(engine.adopt_twin_uprns([rm, far, other_price, same_portal]), 0)
+        a = self._l("zoopla", "5", "Flat 1, X", "21")
+        b = self._l("zoopla", "6", "Flat 2, X", "22")
+        self.assertEqual(engine.adopt_twin_uprns([rm, a, b]), 0)
+        self.assertIsNone(rm.uprn)
+
+
 if __name__ == "__main__":
     unittest.main()

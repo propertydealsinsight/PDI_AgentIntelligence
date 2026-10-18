@@ -72,3 +72,18 @@ class Guard(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAnonAddress(unittest.TestCase):
+    def test_house_numbers_and_names_are_dropped(self):
+        from client_base_engine.explorer import mask_address
+        self.assertEqual(mask_address("Flat 3, 30 Pont Street, London"), "Pont Street, London")
+        self.assertEqual(mask_address("13A Chartfield Avenue"), "Chartfield Avenue")
+        self.assertEqual(mask_address("34, Drummond Place, Edinburgh"), "Drummond Place, Edinburgh")
+        self.assertEqual(mask_address("The Manse, Peverell Terrace, Porthleven"), "Peverell Terrace, Porthleven")
+        self.assertEqual(mask_address(""), "")
+
+    def test_floor_descriptions_are_dropped(self):
+        from client_base_engine.explorer import mask_address
+        self.assertEqual(mask_address("Ground Floor 1, Bushnell Road, Wandsworth, London"), "Bushnell Road, Wandsworth, London")
+        self.assertEqual(mask_address("Top Floor Flat, 12 Louisville Road"), "Louisville Road")

@@ -1,8 +1,9 @@
 """Static PDI-branded HTML explorer for one run (events.csv + summary.json), no server and no network calls.
 
 Same look as AgencyGroups_Winkworth_KFH/engine/build_agency_explorer.py (navy/cyan, KPI tiles, league table,
-opportunity monitor, adjustable fee rates). --anon hides competitor names, listing links, and brand/branch names, and
---name sets how the organisation is described on the page.
+opportunity monitor, adjustable fee rates). --anon hides competitor names, listing links, brand/branch names and house numbers / names (the
+street, town and postcode district stay: the area is the point, the address is not), and --name sets how the organisation
+is described on the page.
 """
 from __future__ import annotations
 
@@ -148,6 +149,24 @@ def _num(v):
         return None
 
 
+def mask_address(address: str) -> str:
+    """Drop the house number / name and any flat from an address: keep from the first street word on.
+    "Flat 3, 30 Pont Street, London" -> "Pont Street, London"; "The Manse, Peverell Terrace" -> "Peverell Terrace"."""
+    parts = [p.strip() for p in (address or "").split(",") if p.strip()]
+    out = []
+    drop = {"flat", "apartment", "unit", "no", "no.", "floor", "ground", "first", "second", "third", "fourth", "lower",
+            "upper", "basement", "top", "garden", "maisonette", "studio", "room"}
+    for p in parts:
+        words = [w for w in p.split() if not any(ch.isdigit() for ch in w) and w.lower().strip(".") not in drop]
+        if words:
+            out.append(" ".join(words))
+    if len(out) > 1 and parts and not any(ch.isdigit() for ch in parts[0]) and len(parts[0].split()) <= 3             and not any(w.lower() in ("road", "street", "avenue", "lane", "close", "way", "place", "gardens", "court",
+                                      "drive", "terrace", "crescent", "square", "hill", "grove", "mews", "row", "walk")
+                        for w in parts[0].split()):
+        out = out[1:]  # a house name before the street ("The Manse, Peverell Terrace")
+    return ", ".join(out)
+
+
 def build(run_dir: str | Path, out: str | Path | None = None, anon: bool = False, name: str | None = None) -> Path:
     run_dir = Path(run_dir)
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
@@ -173,6 +192,9 @@ def build(run_dir: str | Path, out: str | Path | None = None, anon: bool = False
             o["current_agent"] = {"branch": "the branch", "group": "the group", "unknown": ""}.get(rel, "another agent")
             o["detail"] = f"{LABELS[o['event']]} ({o['current_agent'] or 'agent not known'}), {o['event_date']}"
             o["url"] = ""
+            o["address"] = mask_address(o["address"])
+            o["postcode"] = (o["postcode"] or "").split(" ")[0]  # district only
+            o["property_key"] = ""
             o["branch"] = branch_alias.get((o["brand"], o["branch"]), o["branch"])
             o["brand"] = brand_alias.get(o["brand"], o["brand"])
         data_rows.append(o)

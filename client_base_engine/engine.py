@@ -95,6 +95,36 @@ def adopt_twin_uprns(listings: list[Listing], days: int = TWIN_DAYS) -> int:
 SLICE_POSTCODES = 600   # postcodes per slice: about 5 address-master and 10 later-listing reads per portal
 
 
+def date_takedowns(db: ReadOnlyDB, rows: list[dict], now: dt.datetime, withdrawn_months: int, label: str,
+                   skipped: list) -> list[dict]:
+    """Withdrawn rows on Rightmove take the real take-down date (status -> archived in the listing history) instead of
+    the listing's last change, which is often the day it was listed (data check 19 Oct 2026: 23 of 47 on one branch).
+    A row whose take-down is older than the withdrawn window no longer counts and is dropped. Zoopla has no history
+    table: its rows keep the last change, marked date_basis 'last_change'."""
+    ids = sorted({str(r.get("listing_id")) for r in rows
+                  if r.get("event") == "withdrawn" and r.get("portal") == "rightmove" and r.get("listing_id")})
+    dates: dict = {}
+    if ids:
+        try:
+            dates, sk = source.takedown_dates(db, ids, label)
+            if sk:
+                skipped.append({"what": "take-down dates", "branch": label, "keys": len(sk)})
+        except Exception:  # noqa: BLE001 - without history the last change stays, labelled as such
+            log.warning("take-down dates unavailable for %s", label, exc_info=True)
+    out = []
+    for r in rows:
+        if r.get("event") == "withdrawn":
+            d = dates.get(str(r.get("listing_id"))) if r.get("portal") == "rightmove" else None
+            if d:
+                if (now - d).days > withdrawn_months * 30.5:
+                    continue
+                r = dict(r, event_date=d.date().isoformat(), date_basis="taken_down")
+            else:
+                r = dict(r, date_basis="last_change")
+        out.append(r)
+    return out
+
+
 def plan_slices(listings: list[Listing], max_postcodes: int = SLICE_POSTCODES) -> list[list[str]]:
     """The branch's outcodes, most listings first, grouped into slices of at most max_postcodes postcodes (an outcode
     with more postcodes than that is a slice on its own). Never splits an outcode."""
@@ -327,8 +357,16 @@ def run_org(org: Org, db: ReadOnlyDB, now: dt.datetime | None = None, only_branc
             comp12 = [l for ls in later.values() for l in ls
                       if l.first_published and l.first_published >= cutoff12 and relation(l) == "competitor"]
             book_keys = {bp.key for bp in book}
+            slice_rows: dict = {}
             for bp in book:
-                rows = classify(bp, later.get(bp.key, []), c.am_sale.get(bp.uprn) if bp.uprn else None, ctx)
+                slice_rows[bp.key] = classify(bp, later.get(bp.key, []), c.am_sale.get(bp.uprn) if bp.uprn else None, ctx)
+            dated = date_takedowns(db, [r for rs in slice_rows.values() for r in rs], now, p.withdrawn_months, label,
+                                   c.skipped)
+            by_key: dict = defaultdict(list)
+            for r in dated:
+                by_key[r["property_key"]].append(r)
+            for bp in book:
+                rows = by_key.get(bp.key, [])
                 events += rows
                 info["event_rows"] += len(rows)
                 last = bp.last

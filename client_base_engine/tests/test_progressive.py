@@ -150,5 +150,23 @@ class TwinUprnTest(unittest.TestCase):
         self.assertIsNone(rm.uprn)
 
 
+class TakedownDateTest(unittest.TestCase):
+    def test_withdrawn_rows_take_the_rightmove_takedown_date_or_drop_out(self):
+        rows = [{"property_key": "U:1", "event": "withdrawn", "portal": "rightmove", "listing_id": "a", "event_date": "2026-03-01"},
+                {"property_key": "U:2", "event": "withdrawn", "portal": "rightmove", "listing_id": "b", "event_date": "2026-09-01"},
+                {"property_key": "U:3", "event": "withdrawn", "portal": "zoopla", "listing_id": "c", "event_date": "2026-09-02"},
+                {"property_key": "U:4", "event": "sold", "portal": "rightmove", "listing_id": "d", "event_date": "2026-09-03"}]
+        dates = {"a": dt.datetime(2026, 9, 20), "b": dt.datetime(2025, 12, 1)}
+        with mock.patch.object(source, "takedown_dates", lambda db, ids, label: ({k: v for k, v in dates.items() if k in ids}, [])):
+            out = engine.date_takedowns(object(), rows, NOW, 6, "x", [])
+        by = {r["property_key"]: r for r in out}
+        self.assertEqual(by["U:1"]["event_date"], "2026-09-20")
+        self.assertEqual(by["U:1"]["date_basis"], "taken_down")
+        self.assertNotIn("U:2", by)                       # taken down over 6 months ago: no longer 'withdrawn'
+        self.assertEqual(by["U:3"]["date_basis"], "last_change")
+        self.assertEqual(by["U:4"]["event_date"], "2026-09-03")
+
+
 if __name__ == "__main__":
     unittest.main()
+

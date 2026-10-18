@@ -84,6 +84,26 @@ def listings_by_uprn(db: ReadOnlyDB, portal: str, uprns: list[str], lookback_mon
     return [listing_from_row(portal, r) for r in rows], skipped
 
 
+HISTORY_CHUNK = 500
+
+
+def takedown_dates(db: ReadOnlyDB, listing_ids: list[str], label: str) -> tuple[dict, list]:
+    """Rightmove listing id -> the first time its status went to archived (property_details_history, listing_id index).
+    The portals do not date a take-down on the listing row itself; this table does, for Rightmove."""
+    def build(ch):
+        return (f"""SELECT {hint(20000)} listing_id, new_value, changed_at FROM PDI_PortalsData.property_details_history
+            WHERE listing_id IN ({','.join(['%s'] * len(ch))}) AND column_name = 'status'""", ch)
+    rows, skipped = db.fetch_chunked(build, listing_ids, HISTORY_CHUNK, f"takedown {label}")
+    out: dict = {}
+    for r in rows:
+        if str(r.get("new_value") or "").lower() != "archived" or not r.get("changed_at"):
+            continue
+        k = str(r["listing_id"])
+        if k not in out or r["changed_at"] < out[k]:
+            out[k] = r["changed_at"]
+    return out, skipped
+
+
 def _like(prefix: str) -> str:
     return prefix.replace("\\", "\\\\").replace("%", r"\%").replace("_", r"\_") + "%"
 

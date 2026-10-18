@@ -119,6 +119,7 @@ def _row(ctx: Context, prop: BookProperty, event: str, event_date, listing: List
         "current_agent": listing.agent_name if listing else "", "current_agent_relation": relation,
         "current_price": price, "price_type": "sale" if sale else "monthly_rent",
         "portal": listing.portal if listing else "", "url": listing.url if listing else "",
+        "listing_id": listing.listing_id if listing else "", "date_basis": "event",
         "event_address": listing.address if listing else "", "event_uprn": (listing.uprn or "") if listing else "",
         "gap_months": round(gap, 1) if gap is not None else None,
         "est_fee": _fee(ctx, sale, value) if fee else 0.0, "fee_basis": ("sale" if sale else "let") if fee else "none",

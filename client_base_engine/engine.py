@@ -70,20 +70,21 @@ TWIN_DAYS = 14
 
 
 def adopt_twin_uprns(listings: list[Listing], days: int = TWIN_DAYS) -> int:
-    """A listing without a UPRN takes the UPRN of its twin on the other portal: same agent, postcode, sale/let and
-    price, first published within `days` of each other, and exactly one such UPRN. Without this the same home became
+    """A listing without a UPRN takes the UPRN of its twin on the other portal: same postcode, sale/let and price,
+    first published within `days` of each other, and exactly one such UPRN. These are all the branch's own listings, so
+    the agent name is not compared (it differs by portal: 'Winkworth' / 'Winkworth - Blackheath'). Without this the same home became
     two book properties ('U:<uprn>' from Zoopla, 'A:<address>' from Rightmove when the words are in another order)
     and could carry two contradicting events (19 Oct 2026: 72 The Coach House shown both 'with you now' and
     'withdrawn by you'). Returns how many listings took a UPRN."""
     by: dict[tuple, list[Listing]] = defaultdict(list)
     for l in listings:
         if l.uprn and l.postcode and l.price:
-            by[(l.agent_name or "", l.postcode, l.listing_type, round(float(l.price)))].append(l)
+            by[(l.postcode, l.listing_type, round(float(l.price)))].append(l)
     n = 0
     for l in listings:
         if l.uprn or not l.postcode or not l.price or not l.first_published:
             continue
-        twins = [t for t in by.get((l.agent_name or "", l.postcode, l.listing_type, round(float(l.price))), ())
+        twins = [t for t in by.get((l.postcode, l.listing_type, round(float(l.price))), ())
                  if t.portal != l.portal and t.first_published and abs((t.first_published - l.first_published).days) <= days]
         uprns = {t.uprn for t in twins}
         if len(uprns) == 1:

@@ -61,7 +61,11 @@ class Listing:
         return (self.portal, self.agent_name or "", self.agent_address or "")
 
     def is_live(self, now: dt.datetime, live_days: int) -> bool:
-        return (self.status or "") in LIVE_STATUSES and bool(self.updated) and (now - self.updated).days <= live_days
+        """A for_sale / to_rent listing seen within live_days. Seen = the latest of update_time, the portal's own last
+        change and first published: a listing added today has no update_time yet and is live (19 Oct 2026: brand-new
+        listings were read as withdrawn)."""
+        seen = max((d for d in (self.updated, self.listing_update_date, self.first_published) if d), default=None)
+        return (self.status or "") in LIVE_STATUSES and seen is not None and (now - seen).days <= live_days
 
     def is_agreed(self) -> bool:
         """Sale agreed (STC / under offer / sold) or let agreed, whether or not the listing is still shown."""

@@ -293,5 +293,13 @@ class Rollup(unittest.TestCase):
         self.assertEqual(t2["events"]["renewal_due"]["count"], 2)
 
 
+class NewListingIsLiveTest(unittest.TestCase):
+    def test_a_listing_added_today_without_update_time_is_live_not_withdrawn(self):
+        new = L(status="for_sale", fp=ago(0), upd=None, lud=ago(0))
+        self.assertTrue(new.is_live(NOW, Params().live_days))
+        old = L(status="for_sale", fp=ago(400), upd=None, lud=None)
+        self.assertFalse(old.is_live(NOW, Params().live_days))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -20,7 +20,7 @@ plus price_cut as an OVERLAY row when the live listing behind event 1 or 2 has b
 from __future__ import annotations
 
 import datetime as dt
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable
 
 from .model import BookProperty, Listing
@@ -50,18 +50,38 @@ def _d(x: dt.datetime | None) -> str:
     return x.date().isoformat() if x else ""
 
 
-def dedupe_cross_portal(listings: list[Listing]) -> list[Listing]:
-    """The same agent often lists one property on both portals. Keep one per (agent, type, ~first-published month),
-    preferring the live-looking and Rightmove copy."""
-    best: dict[tuple, Listing] = {}
+EPISODE_DAYS = 92   # one agent's listings of one property this close together are one marketing episode
+
+
+def _agent_key(name: str | None) -> str:
+    return (name or "").lower().split(" - ")[0].strip()
+
+
+def dedupe_cross_portal(listings: list[Listing], now: dt.datetime | None = None, live_days: int = 180) -> list[Listing]:
+    """One agent often lists a property on both portals, or re-adverts it. Listings by the same agent (brand part of
+    the name), of the same type, whose first-published dates chain within EPISODE_DAYS are one episode. Each episode
+    is represented by its live copy if any, else its Rightmove copy, else the most recently updated one. A sale
+    episode is dated from its FIRST advert (when it came to market with that agent); a let episode from its LAST
+    advert, because the tenancy starts after the last advert is let (agency_lens also took the latest let listing)."""
+    groups: dict[tuple, list[Listing]] = {}
     for l in listings:
-        fp = l.first_published
-        k = ((l.agent_name or "").lower().split(" - ")[0].strip(), l.listing_type,
-             (fp.year, fp.month) if fp else None)
-        cur = best.get(k)
-        if cur is None or (l.updated or dt.datetime.min, l.portal == "rightmove") > (cur.updated or dt.datetime.min, cur.portal == "rightmove"):
-            best[k] = l
-    return list(best.values())
+        groups.setdefault((_agent_key(l.agent_name), l.listing_type), []).append(l)
+    out: list[Listing] = []
+    for ls in groups.values():
+        ls.sort(key=lambda l: l.first_published or dt.datetime.min)
+        episodes: list[list[Listing]] = []
+        for l in ls:
+            if episodes and l.first_published and episodes[-1][-1].first_published and                     (l.first_published - episodes[-1][-1].first_published).days <= EPISODE_DAYS:
+                episodes[-1].append(l)
+            else:
+                episodes.append([l])
+        for ep in episodes:
+            best = max(ep, key=lambda l: (bool(now) and l.is_live(now, live_days), l.portal == "rightmove",
+                                          l.updated or dt.datetime.min))
+            dates = [l.first_published for l in ep if l.first_published]
+            when = (min(dates) if best.is_sale else max(dates)) if dates else best.first_published
+            out.append(best if when == best.first_published else replace(best, first_published=when))
+    return out
 
 
 def _value(ctx: Context, prop: BookProperty, sale: bool, observed: float | None) -> tuple[float | None, str]:
@@ -99,6 +119,7 @@ def _row(ctx: Context, prop: BookProperty, event: str, event_date, listing: List
         "current_agent": listing.agent_name if listing else "", "current_agent_relation": relation,
         "current_price": price, "price_type": "sale" if sale else "monthly_rent",
         "portal": listing.portal if listing else "", "url": listing.url if listing else "",
+        "event_address": listing.address if listing else "", "event_uprn": (listing.uprn or "") if listing else "",
         "gap_months": round(gap, 1) if gap is not None else None,
         "est_fee": _fee(ctx, sale, value) if fee else 0.0, "fee_basis": ("sale" if sale else "let") if fee else "none",
         "value_used": value if fee else None, "value_basis": basis if fee else "none",
@@ -160,7 +181,7 @@ def classify(prop: BookProperty, later: list[Listing], lr: LandRegistrySale | No
     since = last.first_published or dt.datetime.min
     others = [l for l in later if ctx.relation(l) != "branch" and l.first_published
               and l.first_published > since and l.first_published >= floor]
-    others = dedupe_cross_portal(others)
+    others = dedupe_cross_portal(others, now, p.live_days)
     rows: list[dict] = []
     live_listing: Listing | None = None
 

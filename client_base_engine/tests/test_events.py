@@ -255,7 +255,32 @@ class BookAndMatching(unittest.TestCase):
     def test_cross_portal_duplicate_is_collapsed(self):
         rm = L(who=competitor("Rival"), status="for_sale", fp=ago(30), upd=ago(2), lid="rm")
         zl = L(who=competitor("Rival - Blackheath", "zoopla"), status="for_sale", fp=ago(29), upd=ago(1), lid="zl")
-        self.assertEqual(len(dedupe_cross_portal([rm, zl])), 1)
+        got = dedupe_cross_portal([rm, zl], NOW, 180)
+        self.assertEqual([l.listing_id for l in got], ["rm"])                # Rightmove copy preferred
+
+    def test_let_episode_dated_from_last_advert(self):
+        # Rightmove advert 12 months ago, Zoopla copy / re-advert 10 months ago: one tenancy that started after the
+        # last advert, so renewal is due (dated 10 months), and the Rightmove copy represents it
+        p = prop(L(fp=months(30)))
+        rm = L(who=competitor("Rival"), ltype="let", status="archived", display="Let agreed", price=2000.0,
+               fp=months(12), lid="rm")
+        zl = L(who=competitor("Rival - Lettings", "zoopla"), ltype="let", status="EXPIRED", display="Let", price=2000.0,
+               fp=months(10), lid="zl")
+        rows = classify(p, [rm, zl], None, ctx())
+        self.assertEqual(events(rows), ["renewal_due"])
+        self.assertEqual((rows[0]["event_date"], rows[0]["portal"]), (months(10).date().isoformat(), "rightmove"))
+
+    def test_sale_episode_dated_from_first_advert(self):
+        p = prop(L(fp=months(30)))
+        a = L(who=competitor("Rival"), status="for_sale", fp=ago(80), upd=ago(1), lid="a")
+        b = L(who=competitor("Rival", "zoopla"), status="for_sale", fp=ago(20), upd=ago(1), lid="b")
+        rows = classify(p, [a, b], None, ctx())
+        self.assertEqual(rows[0]["event_date"], ago(80).date().isoformat())
+
+    def test_separate_episodes_stay_separate(self):
+        a = L(who=competitor(), ltype="let", fp=months(20), lid="a")
+        b = L(who=competitor(), ltype="let", fp=months(9), lid="b")
+        self.assertEqual(len(dedupe_cross_portal([a, b], NOW, 180)), 2)
 
 
 class Rollup(unittest.TestCase):

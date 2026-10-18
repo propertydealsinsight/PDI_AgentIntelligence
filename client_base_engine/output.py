@@ -16,6 +16,7 @@ EVENT_COLUMNS = [
     "branch_last_type", "branch_last_date", "branch_last_price", "branch_last_status", "branch_last_portal",
     "event", "event_date", "detail",
     "current_agent", "current_agent_relation", "current_price", "price_type", "portal", "url",
+    "event_address", "event_uprn",
     "gap_months", "est_fee", "fee_basis", "value_used", "value_basis", "confidence",
 ]
 
@@ -72,7 +73,7 @@ def write_run(out_dir: str | Path, org: Org, result: dict, timings: list[dict], 
         "run": {"seconds": round((dt.datetime.now() - started).total_seconds(), 1), "queries": len(timings),
                 "slowest_query_seconds": max((t["seconds"] for t in timings), default=0),
                 "query_errors": [t for t in timings if t.get("error")], "skipped_chunks": result["skipped"],
-                "postcodes_read": result["postcodes_read"]},
+                "postcodes_read": result["postcodes_read"], "book_diagnostics_by_brand": result.get("diagnostics", {})},
         "data_limits": DATA_LIMITS,
     }
     ru = rollup(events, book, result["branches"])

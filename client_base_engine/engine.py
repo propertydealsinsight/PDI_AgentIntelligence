@@ -181,6 +181,7 @@ def run_org(org: Org, db: ReadOnlyDB, now: dt.datetime | None = None, only_branc
 
     events: list[dict] = []
     book_rows: list[dict] = []
+    diag: dict[str, dict[str, set]] = defaultdict(lambda: defaultdict(set))   # brand -> measure -> keys
     branch_info: list[dict] = []
     for b, master_rows, rm, zl, own in resolved:
         if b not in branches:
@@ -197,6 +198,13 @@ def run_org(org: Org, db: ReadOnlyDB, now: dt.datetime | None = None, only_branc
             postcodes = {pc for pc in postcodes if outcode_of(pc) in org.book_outcodes}
         _fill_address_master(db, c, postcodes, label)
         book = build_book(bid, listings, c.am_by_key, org.book_outcodes)
+        d = diag[b.brand]
+        for bp in book:
+            d["properties"].add(bp.key)
+            rm_strings = {l.address for l in bp.listings if l.portal == "rightmove"}
+            d["rightmove_address_strings"].update(rm_strings)
+            if not rm_strings:
+                d["zoopla_only_properties"].add(bp.key)
         uprns = {bp.uprn for bp in book if bp.uprn}
         _fill_later(db, c, postcodes, uprns, p.lookback_months, label)
         later = match_later(book, list(c.listings.values()), c.am_by_key)
@@ -247,5 +255,6 @@ def run_org(org: Org, db: ReadOnlyDB, now: dt.datetime | None = None, only_branc
         branch_info.append(info)
         log.info("%s: %d listings -> %d properties, %d event rows [%ss, %d queries, slowest %.1fs]", label,
                  len(listings), len(book), n_ev, secs, len(qs), info["slowest_query_seconds"])
+    diagnostics = {brand: {k: len(v) for k, v in m.items()} for brand, m in diag.items()}
     return {"events": events, "book": book_rows, "branches": branch_info, "skipped": c.skipped,
-            "now": now, "postcodes_read": len(c.am_postcodes)}
+            "now": now, "postcodes_read": len(c.am_postcodes), "diagnostics": diagnostics}

@@ -169,10 +169,9 @@ def build(run_dir: str | Path, out: str | Path | None = None, anon: bool = False
         o = {k: r.get(k, "") for k in keep}
         o["value_used"] = _num(o["value_used"])
         if anon:
-            if o["current_agent_relation"] not in ("branch", "group"):
-                own = o["current_agent"]
-                o["current_agent"] = "another agent" if own else ""
-                o["detail"] = o["detail"].replace(own, "another agent") if own else o["detail"]
+            rel = o["current_agent_relation"]
+            o["current_agent"] = {"branch": "the branch", "group": "the group", "unknown": ""}.get(rel, "another agent")
+            o["detail"] = f"{LABELS[o['event']]} ({o['current_agent'] or 'agent not known'}), {o['event_date']}"
             o["url"] = ""
             o["branch"] = branch_alias.get((o["brand"], o["branch"]), o["branch"])
             o["brand"] = brand_alias.get(o["brand"], o["brand"])

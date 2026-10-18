@@ -1,0 +1,20 @@
+{
+  "org": "winkworth_blackheath",
+  "group": "Winkworth",
+  "description": "Validation run 1 (PROP-1622): one Winkworth franchise branch, Blackheath. pdi_agent_master id 4117 pairs Rightmove 'Winkworth | 5 Blackheath Village, London, SE3 9LA' with Zoopla 'Winkworth - Blackheath | 5 Blackheath Village, Blackheath,'.",
+  "brands": [
+    {
+      "brand": "Winkworth",
+      "name_prefixes": ["Winkworth"],
+      "branches": [
+        {
+          "branch": "Blackheath",
+          "agent_master": [
+            {"agent_name": "Winkworth", "agent_address": "5 Blackheath Village, London, SE3 9LA"}
+          ],
+          "notes": "agent_master id 4117 (SAME_AGENT_NAME). Row 44345 'Winkworth, Blackheath' has no Zoopla side and a different address; left out, as the live report would."
+        }
+      ]
+    }
+  ]
+}

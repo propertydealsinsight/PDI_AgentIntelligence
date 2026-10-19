@@ -1,0 +1,515 @@
+{
+  "org": "lomond_18oc",
+  "group": "Lomond",
+  "description": "Validation run 2 (PROP-1622): Lomond's three brands on the SAME 18 outcodes as the 4 Oct 2026 agency_lens run (lens_kfh/linley/djalexander_base.json). Branches = every pdi_agent_master row with listings in those outcodes (propose-branches, 18 Oct 2026); the book is limited to properties in the 18 outcodes so the comparison is like for like.",
+  "book_outcodes": [
+    "SW11",
+    "SW12",
+    "SW15",
+    "SW17",
+    "SW18",
+    "SE11",
+    "LS6",
+    "LS7",
+    "LS8",
+    "LS10",
+    "LS18",
+    "LS28",
+    "EH3",
+    "EH4",
+    "EH6",
+    "EH7",
+    "EH11",
+    "G12"
+  ],
+  "brands": [
+    {
+      "brand": "KFH",
+      "name_prefixes": [
+        "Kinleigh Folkard"
+      ],
+      "branches": [
+        {
+          "branch": "Earlsfield",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "517-519 Garratt Lane, London, SW18 4SW"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "334 Garratt Lane, London, SW18 4EL"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "Kinleigh Folkard & Hayward - Sales, Earlsfield"
+            }
+          ],
+          "notes": "agent_master ids 19441 (RM 1229/ZL 566), 19442 (RM 615/ZL 566), 89632 (RM 1/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "Balham",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "124 Balham High Road, London, SW12 9AA"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "124 Balham High Road, London, SW12 9AA"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "Kinleigh Folkard & Hayward - Sales, Balham"
+            }
+          ],
+          "notes": "agent_master ids 19341 (RM 1211/ZL 563), 19340 (RM 835/ZL 563), 19346 (RM 0/ZL 563) listings in the outcodes"
+        },
+        {
+          "branch": "Battersea Park",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "242 Battersea Bridge Road, London, SW11 3BP"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "242 Battersea Park Road London SW11 3BP"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "Kinleigh Folkard & Hayward - Lettings, Battersea Park Lettings"
+            }
+          ],
+          "notes": "agent_master ids 19225 (RM 1028/ZL 653), 19241 (RM 620/ZL 653), 19253 (RM 0/ZL 653) listings in the outcodes"
+        },
+        {
+          "branch": "Tooting",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "58-60 Tooting High Street, London, SW17 0RN"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "58-60 Tooting High Street, London, SW17 0RN"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "Kinleigh Folkard & Hayward - Lettings, Tooting"
+            }
+          ],
+          "notes": "agent_master ids 7118 (RM 1099/ZL 546), 7122 (RM 793/ZL 546), 7133 (RM 0/ZL 546) listings in the outcodes"
+        },
+        {
+          "branch": "Putney Hill",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "1 Putney Hill, London, SW15 6BA"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "1 Putney Hill, London, SW15 6BA"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "Kinleigh Folkard & Hayward - Lettings, Putney"
+            }
+          ],
+          "notes": "agent_master ids 19407 (RM 941/ZL 475), 19409 (RM 668/ZL 475), 19413 (RM 0/ZL 475) listings in the outcodes"
+        },
+        {
+          "branch": "Battersea (Northcote Road)",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "108 Northcote Road, London, SW11 6QP"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "108 Northcote Road, London, SW11 6QP"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "Kinleigh Folkard & Hayward - Lettings, Battersea"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "Kinleigh Folkard & Hayward - Lettings, Battersea Park Lettings"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "Kinleigh Folkard & Hayward - Sales, Battersea"
+            }
+          ],
+          "notes": "agent_master ids 19232 (RM 741/ZL 452), 19235 (RM 721/ZL 452), 19255 (RM 0/ZL 452), 19256 (RM 0/ZL 452), 89321 (RM 1/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "West Putney",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "81-83 Lower Richmond Road, London, SW15 1EU"
+            }
+          ],
+          "notes": "agent_master ids 19410 (RM 442/ZL 139) listings in the outcodes"
+        },
+        {
+          "branch": "Southfields",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "244 Wimbledon Park Road, Southfields, London, SW18 5RL"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "251 Wimbledon Park Road, SW19 6NW"
+            }
+          ],
+          "notes": "agent_master ids 19414 (RM 284/ZL 210), 89509 (RM 410/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "Kennington",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "292-294 Kennington Road, London, SE11 4LD"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "292-294 Kennington Road, London, SE11 4LD"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "Kinleigh Folkard & Hayward - Lettings, Kennington"
+            }
+          ],
+          "notes": "agent_master ids 18470 (RM 274/ZL 150), 18471 (RM 241/ZL 150), 18473 (RM 0/ZL 150) listings in the outcodes"
+        },
+        {
+          "branch": "Kingston",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "55-59 Fife Road, Kingston Upon Thames, KT1 1SF"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "55 - 59 Fife Road, Kingston Upon Thames, KT1 1SF"
+            }
+          ],
+          "notes": "agent_master ids 13934 (RM 52/ZL 31), 13971 (RM 52/ZL 25), 13952 (RM 38/ZL 31), 13985 (RM 52/ZL 14), 14053 (RM 52/ZL 9), 14052 (RM 52/ZL 0), 13968 (RM 38/ZL 14), 13997 (RM 38/ZL 9) listings in the outcodes"
+        },
+        {
+          "branch": "Wimbledon",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward",
+              "agent_address": "KFH House, 5 Compton Road, Wimbledon, London, SW19 7QA"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "49 Wimbledon Hill Road, London, SW19 7QW"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "49 Wimbledon Hill Road, London, SW19 7QW"
+            }
+          ],
+          "notes": "agent_master ids 10507 (RM 41/ZL 21), 19461 (RM 4/ZL 1), 19462 (RM 4/ZL 1) listings in the outcodes"
+        },
+        {
+          "branch": "Land and New Homes",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Land and New Homes",
+              "agent_address": "First Floor, 44-48 Borough High Street London SE1 1XW"
+            }
+          ],
+          "notes": "agent_master ids 19518 (RM 46/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "Clapham",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "44 Abbeville Road, London, SW4 9NF"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "44 Abbeville Road, London, SW4 9NF"
+            }
+          ],
+          "notes": "agent_master ids 18577 (RM 17/ZL 12), 86536 (RM 24/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "Fulham and Parsons Green",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "825-827 Fulham Road, London, SW6 5HG"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Lettings",
+              "agent_address": "Kinleigh Folkard & Hayward - Lettings, Fulham and Parsons Green"
+            },
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "825-827 Fulham Road, London, SW6 5HG"
+            }
+          ],
+          "notes": "agent_master ids 19555 (RM 0/ZL 9), 19573 (RM 0/ZL 9), 19567 (RM 0/ZL 9) listings in the outcodes"
+        },
+        {
+          "branch": "Chiswick",
+          "agent_master": [
+            {
+              "agent_name": "Kinleigh Folkard & Hayward - Sales",
+              "agent_address": "163-165 Chiswick High Road London W4 2DT"
+            }
+          ],
+          "notes": "agent_master ids 20027 (RM 1/ZL 0) listings in the outcodes"
+        }
+      ]
+    },
+    {
+      "brand": "Linley & Simpson",
+      "name_prefixes": [
+        "Linley & Simpson",
+        "Linley and Simpson"
+      ],
+      "branches": [
+        {
+          "branch": "Leeds City Centre",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "1 Dock Street, Leeds, LS10 1NB"
+            },
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "1 Dock Street Leeds LS10 1NB"
+            }
+          ],
+          "notes": "agent_master ids 14916 (RM 1079/ZL 440), 14932 (RM 1079/ZL 297), 14920 (RM 246/ZL 440), 14933 (RM 246/ZL 297) listings in the outcodes"
+        },
+        {
+          "branch": "Headingley",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "75 Otley Road, Headingley, Leeds, LS6 3PS"
+            },
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "75 Otley Road, Headingley, Leeds LS6 3PS"
+            },
+            {
+              "agent_name": "Linley & Simpson - Headingley Lettings",
+              "agent_address": "75 Otley Road, Headingley, Leeds"
+            }
+          ],
+          "notes": "agent_master ids 2623 (RM 1002/ZL 349), 14983 (RM 457/ZL 215), 40167 (RM 0/ZL 302) listings in the outcodes"
+        },
+        {
+          "branch": "Roundhay",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "54 Street Lane, Roundhay, Leeds LS8 2ET"
+            },
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "54 Street Lane, Roundhay, Leeds, LS8 2ET"
+            },
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "Linley & Simpson, Roundhay Leeds"
+            }
+          ],
+          "notes": "agent_master ids 14982 (RM 872/ZL 290), 14963 (RM 91/ZL 202), 73465 (RM 18/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "Horsforth",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "12 Station Road, Horsforth, Leeds, LS18 5NR"
+            }
+          ],
+          "notes": "agent_master ids 2543 (RM 700/ZL 417) listings in the outcodes"
+        },
+        {
+          "branch": "Pudsey",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "31 - 33 Church Lane Pudsey LS28 7LD"
+            },
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "31-33 Church Lane Pudsey LS28 7LD"
+            }
+          ],
+          "notes": "agent_master ids 2500 (RM 703/ZL 326), 2592 (RM 476/ZL 368) listings in the outcodes"
+        },
+        {
+          "branch": "Students (Headingley Lane)",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson Students",
+              "agent_address": "47 Headingley Lane, Headingley, Leeds, LS6 1DP"
+            }
+          ],
+          "notes": "agent_master ids 22580 (RM 567/ZL 412) listings in the outcodes"
+        },
+        {
+          "branch": "Chapel Allerton",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "116-118 Harrogate Road, Chapel Allerton, Leeds, LS7 4NY"
+            }
+          ],
+          "notes": "agent_master ids 14988 (RM 340/ZL 208) listings in the outcodes"
+        },
+        {
+          "branch": "Wakefield",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "68 Northgate, Wakefield, WF1 3AP"
+            },
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "Linley & Simpson, Wakefield"
+            }
+          ],
+          "notes": "agent_master ids 2619 (RM 40/ZL 21), 2612 (RM 0/ZL 21) listings in the outcodes"
+        },
+        {
+          "branch": "Wetherby",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "30 North Street, Wetherby, LS22 6NN"
+            }
+          ],
+          "notes": "agent_master ids 13169 (RM 2/ZL 2) listings in the outcodes"
+        },
+        {
+          "branch": "York",
+          "agent_master": [
+            {
+              "agent_name": "Linley and Simpson",
+              "agent_address": "2 Low Ousegate, York, YO1 9QU"
+            }
+          ],
+          "notes": "agent_master ids 9142 (RM 1/ZL 1), 9170 (RM 1/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "Harrogate",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "12 Albert St, Harrogate, HG1 1JG"
+            },
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "12 Albert Street Harrogate HG1 1JT"
+            }
+          ],
+          "notes": "agent_master ids 2670 (RM 1/ZL 0), 13131 (RM 1/ZL 0) listings in the outcodes"
+        },
+        {
+          "branch": "Leeds (no address)",
+          "agent_master": [
+            {
+              "agent_name": "Linley & Simpson",
+              "agent_address": "Linley & Simpson, Leeds"
+            }
+          ],
+          "notes": "agent_master ids 73365 (RM 1/ZL 0) listings in the outcodes"
+        }
+      ]
+    },
+    {
+      "brand": "DJ Alexander",
+      "name_prefixes": [
+        "DJ Alexander",
+        "D J Alexander"
+      ],
+      "branches": [
+        {
+          "branch": "Edinburgh Sunnyside",
+          "agent_master": [
+            {
+              "agent_name": "DJ Alexander",
+              "agent_address": "John Cotton Centre, 10 Sunnyside, Edinburgh, EH7 5RA"
+            },
+            {
+              "agent_name": "D J Alexander",
+              "agent_address": "John Cotton Centre, 10 Sunnyside, Edinburgh, EH7 5RA"
+            }
+          ],
+          "notes": "agent_master ids 215 (RM 5014/ZL 4486), 10615 (RM 409/ZL 271) listings in the outcodes"
+        },
+        {
+          "branch": "Edinburgh Wemyss Place",
+          "agent_master": [
+            {
+              "agent_name": "DJ Alexander",
+              "agent_address": "1 Wemyss Place, Edinburgh, EH3 6DH"
+            },
+            {
+              "agent_name": "D J Alexander",
+              "agent_address": "1 Wemyss Place, Edinburgh, EH3 6DH"
+            }
+          ],
+          "notes": "agent_master ids 8258 (RM 875/ZL 859), 10647 (RM 73/ZL 361) listings in the outcodes"
+        },
+        {
+          "branch": "Glasgow Byres Road",
+          "agent_master": [
+            {
+              "agent_name": "DJ Alexander",
+              "agent_address": "303 Byres Road, Glasgow, G12 8UQ"
+            },
+            {
+              "agent_name": "DJ Alexander",
+              "agent_address": "DJ Alexander, Glasgow"
+            },
+            {
+              "agent_name": "DJ Alexander - Glasgow",
+              "agent_address": "303 Byres Road, Glasgow"
+            },
+            {
+              "agent_name": "D J Alexander",
+              "agent_address": "303 Byres Road, Glasgow, G12 8UQ"
+            },
+            {
+              "agent_name": "DJ Alexander - Glasgow",
+              "agent_address": "303 Byres Road, Glasgow,"
+            },
+            {
+              "agent_name": "DJ Alexander",
+              "agent_address": "114 Union Street First Floor, Glasgow"
+            }
+          ],
+          "notes": "agent_master ids 10825 (RM 433/ZL 9), 11528 (RM 0/ZL 201), 55720 (RM 0/ZL 88), 20768 (RM 15/ZL 18), 63336 (RM 0/ZL 25), 61815 (RM 0/ZL 1) listings in the outcodes"
+        },
+        {
+          "branch": "Aberdeen",
+          "agent_master": [
+            {
+              "agent_name": "DJ Alexander",
+              "agent_address": "The Quadrant, Poynernook Road, Aberdeen, AB11 5QX"
+            }
+          ],
+          "notes": "agent_master ids 4 (RM 1/ZL 0), 37 (RM 1/ZL 0) listings in the outcodes"
+        }
+      ]
+    }
+  ]
+}

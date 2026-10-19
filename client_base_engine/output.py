@@ -13,7 +13,7 @@ from .rollup import rollup
 EVENT_COLUMNS = [
     "org", "group", "brand", "branch",
     "property_key", "uprn", "address", "postcode", "outcode", "match_basis",
-    "branch_last_type", "branch_last_date", "branch_last_price", "branch_last_status", "branch_last_portal",
+    "branch_last_type", "branch_last_date", "branch_last_price", "branch_last_status", "branch_last_portal", "branch_last_url",
     "event", "event_date", "detail",
     "current_agent", "current_agent_relation", "current_price", "price_type", "portal", "url",
     "event_address", "event_uprn",

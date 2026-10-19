@@ -115,6 +115,7 @@ def _row(ctx: Context, prop: BookProperty, event: str, event_date, listing: List
         "outcode": prop.outcode, "match_basis": prop.match_basis,
         "branch_last_type": last.listing_type, "branch_last_date": _d(last.first_published),
         "branch_last_price": last.price, "branch_last_status": last.status_text(), "branch_last_portal": last.portal,
+        "branch_last_url": last.url,   # the branch's own listing (19 Oct 2026: the page linked the competitor's under "your last listing")
         "event": event, "event_date": _d(event_date), "detail": detail,
         "current_agent": listing.agent_name if listing else "", "current_agent_relation": relation,
         "current_price": price, "price_type": "sale" if sale else "monthly_rent",

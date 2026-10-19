@@ -78,8 +78,16 @@ def load_org(path: str | Path) -> Org:
 
 
 def name_has_prefix(name: str | None, prefix: str) -> bool:
-    """Case-insensitive prefix that ends on a word boundary ('eXp' does not match 'Express Estate Agency')."""
+    """Case-insensitive prefix that ends on a word boundary ('eXp' does not match 'Express Estate Agency'). A network's
+    self-employed agents list as 'Cerrone Estates, Powered by eXp UK': 'powered by <prefix>' anywhere in the name also
+    matches (19 Oct 2026: eXp's own agents were counted as competitors)."""
     n, p = (name or "").lower(), prefix.lower().strip()
-    if not p or not n.startswith(p):
+    if not p:
+        return False
+    i = n.find("powered by " + p)
+    if i >= 0:
+        j = i + len("powered by ") + len(p)
+        return len(n) == j or not n[j].isalnum()
+    if not n.startswith(p):
         return False
     return len(n) == len(p) or not n[len(p)].isalnum()

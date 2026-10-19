@@ -91,6 +91,15 @@ class BookFallbackTest(unittest.TestCase):
         self.assertGreater(len(db.calls), 5)
 
 
+class PoweredByTest(unittest.TestCase):
+    def test_a_networks_own_agents_are_sister_offices(self):
+        from client_base_engine.org import name_has_prefix
+        self.assertTrue(name_has_prefix("Cerrone Estates, Powered by Exp UK", "eXp UK"))
+        self.assertTrue(name_has_prefix("Billingham & Co, Powered by eXp UK", "eXp UK"))
+        self.assertFalse(name_has_prefix("Powered by eXpress Homes", "eXp"))
+        self.assertTrue(name_has_prefix("eXp UK, North East", "eXp UK"))
+
+
 if __name__ == "__main__":
     unittest.main()
 

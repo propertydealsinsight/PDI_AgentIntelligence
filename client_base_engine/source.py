@@ -8,7 +8,9 @@ No query scans a table; keys are passed in chunks (db.fetch_chunked) and each ch
 """
 from __future__ import annotations
 
-from .db import ReadOnlyDB, hint
+import datetime as dt
+
+from .db import QueryTimeout, ReadOnlyDB, hint
 from .model import Listing, listing_from_row
 
 TABLES = {"rightmove": "PDI_PortalsData.property_details", "zoopla": "PDI_PortalsData.property_details_zoopla"}
@@ -48,9 +50,20 @@ def branch_listings(db: ReadOnlyDB, portal: str, pairs: set, outcodes: list[str]
     if outcodes:
         oc = f" AND outcode IN ({','.join(['%s'] * len(outcodes))})"
         params += outcodes
-    rows = db.fetch(f"""SELECT {hint(40000)} {LISTING_COLS} FROM {TABLES[portal]}
-        WHERE ({clause}) AND full_property_address IS NOT NULL AND TRIM(postcode) <> ''{oc} LIMIT 100000""",
-                    params, label=f"book {portal} {label}")
+    sql = f"""SELECT {hint(40000)} {LISTING_COLS} FROM {TABLES[portal]}
+        WHERE ({clause}) AND full_property_address IS NOT NULL AND TRIM(postcode) <> ''{oc}"""
+    try:
+        rows = db.fetch(sql + " LIMIT 100000", params, label=f"book {portal} {label}")
+    except QueryTimeout:
+        # A national book (eXp: ~72k Rightmove rows) can hit the cap when the database is busy: read it in two-year
+        # windows instead of failing the whole build (19 Oct 2026: eXp World UK failed here).
+        rows = []
+        this_year = dt.date.today().year
+        for start in range(2008, this_year + 1, 2):
+            rows += db.fetch(sql + f" AND first_published_date >= '{start}-01-01' AND first_published_date < '{start + 2}-01-01'"
+                                   " LIMIT 100000", params, label=f"book {portal} {label} {start}-{start + 1}")
+        rows += db.fetch(sql + " AND (first_published_date IS NULL OR first_published_date < '2008-01-01') LIMIT 100000",
+                         params, label=f"book {portal} {label} undated")
     return [listing_from_row(portal, r) for r in rows]
 
 

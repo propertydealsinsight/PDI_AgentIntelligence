@@ -70,6 +70,27 @@ class Guard(unittest.TestCase):
         self.assertEqual(Params.from_dict({"let_fee_pct": 10}).let_fee_pct, 10.0)
 
 
+class BookFallbackTest(unittest.TestCase):
+    def test_a_timed_out_book_query_is_read_in_year_windows(self):
+        from client_base_engine import source
+        from client_base_engine.db import QueryTimeout
+
+        class DB:
+            def __init__(self):
+                self.calls = []
+
+            def fetch(self, sql, params=None, label=""):
+                self.calls.append(label)
+                if len(self.calls) == 1:
+                    raise QueryTimeout(label)
+                return [{"listing_id": str(len(self.calls)), "full_property_address": "1 A Road, London SE3 9AA",
+                         "postcode": "SE3 9AA", "listing_status": "sale", "price": 1}] if "2024-2025" in label else []
+        db = DB()
+        out = source.branch_listings(db, "rightmove", {("X", "Y")}, [], "x")
+        self.assertEqual(len(out), 1)
+        self.assertGreater(len(db.calls), 5)
+
+
 if __name__ == "__main__":
     unittest.main()
 
@@ -87,3 +108,4 @@ class TestAnonAddress(unittest.TestCase):
         from client_base_engine.explorer import mask_address
         self.assertEqual(mask_address("Ground Floor 1, Bushnell Road, Wandsworth, London"), "Bushnell Road, Wandsworth, London")
         self.assertEqual(mask_address("Top Floor Flat, 12 Louisville Road"), "Louisville Road")
+

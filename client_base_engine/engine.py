@@ -54,6 +54,22 @@ class Caches:
         if l.uprn:
             self.by_uprn[l.uprn].append(l)
 
+    def forget(self, postcodes: set[str], uprns: set[str]) -> None:
+        """Drop the later listings and address-master keys of a finished slice (single-branch runs only: nothing later
+        needs them). The 'done' marks stay, so they are never read again. Keeps a national book's memory flat
+        (19 Oct 2026: an eXp run reached 1.1 GB at 56% when every listing was kept)."""
+        gone = set()
+        for pc in postcodes:
+            for l in self.by_postcode.pop(pc, ()):
+                gone.add((l.portal, l.listing_id))
+        for u in uprns:
+            for l in self.by_uprn.pop(u, ()):
+                gone.add((l.portal, l.listing_id))
+        for k in gone:
+            self.listings.pop(k, None)
+        for k in [k for k in self.am_by_key if k.rsplit("|", 1)[-1] in postcodes]:
+            self.am_by_key.pop(k, None)
+
     def candidates(self, postcodes: set[str], uprns: set[str]) -> list[Listing]:
         """Later listings read for these postcodes or UPRNs (each once)."""
         out: dict[tuple[str, str], Listing] = {}
@@ -395,6 +411,8 @@ def run_org(org: Org, db: ReadOnlyDB, now: dt.datetime | None = None, only_branc
             info["queries"] = len(qs)
             info["slowest_query_seconds"] = max((q["seconds"] for q in qs), default=0)
             info["slices_done"] = si + 1
+            if len(todo) == 1:
+                c.forget(postcodes, uprns)
             listings_done += len(sl)
             outcodes_done += len(ocs)
             if progress is not None:

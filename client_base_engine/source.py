@@ -9,6 +9,7 @@ No query scans a table; keys are passed in chunks (db.fetch_chunked) and each ch
 from __future__ import annotations
 
 import datetime as dt
+import re
 
 from .db import QueryTimeout, ReadOnlyDB, hint
 from .model import Listing, listing_from_row
@@ -36,6 +37,26 @@ def resolve_pairs(db: ReadOnlyDB, pairs: list[tuple[str, str]], label: str) -> t
                     label=f"agent_master {label}")
     rm = {(r["agent_name_rm"], r["address_rm"]) for r in rows if r["agent_name_rm"] and r["address_rm"]}
     zl = {(r["agent_name_zl"], r["address_zl"]) for r in rows if r["agent_name_zl"] and r["address_zl"]}
+    if (not rm or not zl) and all(len((a or "").strip()) >= 8 for _, a in pairs):
+        # The master often lists an office under the brand alone on one portal: 'DJ Alexander | 303 Byres Road, Glasgow,
+        # G12 8UQ' on Rightmove while the report says 'DJ Alexander - Glasgow' (20 Oct 2026: its book had 623 homes, all
+        # from Zoopla). Second pass, only for the portal with nothing: the brand name, the address as given or with its
+        # postcode on the end.
+        clause2 = " OR ".join(["((agent_name_rm IN (%s, %s) OR agent_name_zl IN (%s, %s)) AND (address_rm LIKE %s OR address_zl LIKE %s))"]
+                              * len(pairs))
+        params2: list = []
+        for n, a in pairs:
+            brand = re.sub(r"(\s+-\s+|,\s*).*$", "", n, count=1).strip()
+            prefix = a.strip().rstrip(",").strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+            params2 += [n, brand, n, brand, prefix, prefix]
+        more = db.fetch(f"""SELECT {hint(15000)} id, agent_master_name, agent_name_rm, address_rm, agent_name_zl, address_zl,
+                matching_algo FROM PDI_PortalsData.pdi_agent_master WHERE {clause2} LIMIT 500""", params2,
+                        label=f"agent_master brand {label}")
+        if not rm:
+            rm = {(r["agent_name_rm"], r["address_rm"]) for r in more if r["agent_name_rm"] and r["address_rm"]}
+        if not zl:
+            zl = {(r["agent_name_zl"], r["address_zl"]) for r in more if r["agent_name_zl"] and r["address_zl"]}
+        rows = rows + [r for r in more if r["id"] not in {x["id"] for x in rows}]
     return rows, rm, zl
 
 
